@@ -81,13 +81,13 @@ func newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
 type routeItemSlice []*routeItem
 
 type router struct {
-	routes     map[string]routeItemSlice
+	routes     map[string]*routeItemSlice
 	routesLock sync.RWMutex
 }
 
 // NewRouter 新建Router
 func NewRouter() Router {
-	return &router{routes: make(map[string]routeItemSlice)}
+	return &router{routes: make(map[string]*routeItemSlice)}
 }
 
 func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
@@ -101,7 +101,7 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 
 	routeSlice, ok := s.routes[rt.Method()]
 	if ok {
-		for _, val := range routeSlice {
+		for _, val := range *routeSlice {
 			if val.equal(rt) {
 				msg := fmt.Sprintf("duplicate route!, pattern:%s, method:%s", rt.Pattern(), rt.Method())
 				panicInfo(msg)
@@ -109,14 +109,15 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 		}
 
 		item := newRouteItem(rt, filters...)
-		routeSlice = append(routeSlice, item)
+		*routeSlice = append(*routeSlice, item)
+		//s.routes[rt.Method()] = routeSlice
 
 		return
 	}
 
 	item := newRouteItem(rt, filters...)
-	routeSlice = routeItemSlice{}
-	routeSlice = append(routeSlice, item)
+	routeSlice = &routeItemSlice{}
+	*routeSlice = append(*routeSlice, item)
 	s.routes[rt.Method()] = routeSlice
 }
 
@@ -131,22 +132,22 @@ func (s *router) RemoveRoute(rt Route) {
 	}
 
 	newRoutes := routeItemSlice{}
-	for idx, val := range routeSlice {
+	for idx, val := range *routeSlice {
 		if val.equal(rt) {
 			if idx > 0 {
-				newRoutes = append(newRoutes, routeSlice[0:idx]...)
+				newRoutes = append(newRoutes, (*routeSlice)[0:idx]...)
 			}
 
 			idx++
 			if idx < len(s.routes) {
-				newRoutes = append(newRoutes, routeSlice[idx:]...)
+				newRoutes = append(newRoutes, (*routeSlice)[idx:]...)
 			}
 
 			break
 		}
 	}
 
-	s.routes[rt.Method()] = newRoutes
+	s.routes[rt.Method()] = &newRoutes
 }
 
 func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request) {
@@ -161,7 +162,7 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 			return
 		}
 
-		routeSlice = slice
+		routeSlice = (*slice)[:]
 	}
 
 	var routeCtx RequestContext
