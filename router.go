@@ -110,8 +110,6 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 
 		item := newRouteItem(rt, filters...)
 		*routeSlice = append(*routeSlice, item)
-		//s.routes[rt.Method()] = routeSlice
-
 		return
 	}
 
@@ -157,12 +155,9 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 		defer s.routesLock.RUnlock()
 
 		slice, ok := s.routes[strings.ToUpper(req.Method)]
-		if !ok {
-			http.NotFound(res, req)
-			return
+		if ok {
+			routeSlice = (*slice)[:]
 		}
-
-		routeSlice = (*slice)[:]
 	}
 
 	var routeCtx RequestContext
@@ -173,10 +168,10 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 		}
 	}
 
-	if routeCtx == nil {
-		http.NotFound(res, req)
+	if routeCtx != nil {
+		routeCtx.Run()
 		return
 	}
 
-	routeCtx.Run()
+	http.NotFound(res, req)
 }
