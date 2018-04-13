@@ -173,5 +173,5 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	http.NotFound(res, req)
+	http.Redirect(res, req, "/404.html", http.StatusMovedPermanently)
 }

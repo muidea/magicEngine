@@ -48,6 +48,7 @@ func prepareStaticOptions(option *StaticOptions) StaticOptions {
 }
 
 type static struct {
+	rootPath string
 }
 
 // Static returns a middleware handler that serves static files in the given directory.
@@ -67,8 +68,13 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 
 	directory := staticOpt.Path
 	if !filepath.IsAbs(directory) {
+		directory = filepath.Join(s.rootPath, directory)
+	}
+	// 防止directory为相对路径
+	if !filepath.IsAbs(directory) {
 		directory = filepath.Join(Root, directory)
 	}
+
 	dir := http.Dir(directory)
 	opt := prepareStaticOptions(staticOpt)
 

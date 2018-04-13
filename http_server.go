@@ -14,18 +14,20 @@ type HTTPServer interface {
 }
 
 type httpServer struct {
-	listenAddr string
-	router     Router
-	filter     MiddleWareChains
-	logger     *log.Logger
+	listenAddr    string
+	router        Router
+	filter        MiddleWareChains
+	logger        *log.Logger
+	staticOptions *StaticOptions
 }
 
 // NewHTTPServer 新建HTTPServer
 func NewHTTPServer(listenAddr string) HTTPServer {
-	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: log.New(os.Stdout, "[magic_engine] ", 0)}
+	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: log.New(os.Stdout, "[magic_engine] ", 0), staticOptions: &StaticOptions{Path: "static"}}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
+	svr.Use(&static{rootPath: Root})
 
 	return svr
 }
@@ -34,6 +36,7 @@ func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	ctx := NewRequestContext(s.filter.GetHandlers(), s.router, res, req)
 	ctx.SetData(systemLogger, s.logger)
+	ctx.SetData(systemStatic, s.staticOptions)
 
 	ctx.Run()
 }

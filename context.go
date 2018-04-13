@@ -217,7 +217,8 @@ func (c *requestContext) Run() {
 		c.router.Handle(c, c.rw, c.req)
 	} else {
 		// 到这里说明没有router，也没有对应的MiddleWareHandler
-		http.NotFound(c.rw, c.req)
+		//http.NotFound(c.rw, c.req)
+		http.Redirect(c.rw, c.req, "/404.html", http.StatusNotFound)
 	}
 }
 
