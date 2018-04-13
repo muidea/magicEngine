@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	panicHtml = `<html>
+	panicHTML = `<html>
 <head><title>PANIC: %s</title>
 <style type="text/css">
 html, body {
@@ -129,7 +129,7 @@ func (s *recovery) Handle(ctx RequestContext, res http.ResponseWriter, req *http
 			var body []byte
 			if Env == Dev {
 				res.Header().Set("Content-Type", "text/html")
-				body = []byte(fmt.Sprintf(panicHtml, err, err, stack))
+				body = []byte(fmt.Sprintf(panicHTML, err, err, stack))
 			} else {
 				body = []byte("500 Internal Server Error")
 			}
