@@ -2,6 +2,7 @@ package magicengine
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -95,6 +96,8 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	for _, val := range filters {
 		ValidateMiddleWareHandler(val)
 	}
+
+	log.Printf("[%s]:%s", rt.Method(), rt.Pattern())
 
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
