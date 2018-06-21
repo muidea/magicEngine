@@ -1,6 +1,7 @@
 package magicengine
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -22,7 +23,8 @@ type httpServer struct {
 }
 
 // NewHTTPServer 新建HTTPServer
-func NewHTTPServer(listenAddr string) HTTPServer {
+func NewHTTPServer(bindPort string) HTTPServer {
+	listenAddr := fmt.Sprintf(":%s", bindPort)
 	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: log.New(os.Stdout, "[magic_engine] ", 0), staticOptions: &StaticOptions{Path: "static"}}
 
 	svr.Use(&logger{})
