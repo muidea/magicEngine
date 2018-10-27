@@ -38,6 +38,29 @@ type Router interface {
 	Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 }
 
+type rtItem struct {
+	pattern string
+	method  string
+	handler interface{}
+}
+
+func (s *rtItem) Pattern() string {
+	return s.pattern
+}
+
+func (s *rtItem) Method() string {
+	return s.method
+}
+
+func (s *rtItem) Handler() interface{} {
+	return s.handler
+}
+
+// CreateRoute create Route
+func CreateRoute(pattern, method string, handler interface{}) Route {
+	return &rtItem{pattern: pattern, method: method, handler: handler}
+}
+
 // 路由对象
 type routeItem struct {
 	route   Route
