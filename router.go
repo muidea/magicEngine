@@ -176,7 +176,7 @@ func (s *router) RemoveRoute(rt Route) {
 
 func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request) {
 	var routeSlice routeItemSlice
-	{
+	func() {
 		s.routesLock.RLock()
 		defer s.routesLock.RUnlock()
 
@@ -184,7 +184,7 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 		if ok {
 			routeSlice = (*slice)[:]
 		}
-	}
+	}()
 
 	var routeCtx RequestContext
 	for _, val := range routeSlice {
@@ -199,5 +199,6 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	http.Redirect(res, req, "/404.html", http.StatusMovedPermanently)
+	http.NotFound(res, req)
+	//http.Redirect(res, req, "/404.html", http.StatusMovedPermanently)
 }
