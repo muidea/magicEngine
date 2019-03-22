@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	engine "muidea.com/magicEngine"
+	engine "github.com/muidea/magicEngine"
 )
 
 // Hello hello middleware
