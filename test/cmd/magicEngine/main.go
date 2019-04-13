@@ -1,8 +1,8 @@
 package main
 
 import (
-	engine "muidea.com/magicEngine"
-	"muidea.com/magicEngine/test"
+	engine "github.com/muidea/magicEngine"
+	"github.com/muidea/magicEngine/test"
 )
 
 func main() {
