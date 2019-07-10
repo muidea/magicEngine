@@ -23,7 +23,7 @@ func (s *getRoute) Pattern() string {
 	return "/demo/:id"
 }
 
-func (s *getRoute) Handler() interface{} {
+func (s *getRoute) Handler() func(http.ResponseWriter, *http.Request) {
 	return s.getDemo
 }
 

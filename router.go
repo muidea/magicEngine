@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -25,7 +27,7 @@ type Route interface {
 	// Pattern 路由规则, 以'/'开始
 	Pattern() string
 	// Handler 路由处理器
-	Handler() interface{}
+	Handler() func(http.ResponseWriter, *http.Request)
 }
 
 // Router 路由器对象
@@ -41,7 +43,7 @@ type Router interface {
 type rtItem struct {
 	pattern string
 	method  string
-	handler interface{}
+	handler func(http.ResponseWriter, *http.Request)
 }
 
 func (s *rtItem) Pattern() string {
@@ -52,13 +54,47 @@ func (s *rtItem) Method() string {
 	return s.method
 }
 
-func (s *rtItem) Handler() interface{} {
+func (s *rtItem) Handler() func(http.ResponseWriter, *http.Request) {
 	return s.handler
 }
 
 // CreateRoute create Route
-func CreateRoute(pattern, method string, handler interface{}) Route {
+func CreateRoute(pattern, method string, handler func(http.ResponseWriter, *http.Request)) Route {
 	return &rtItem{pattern: pattern, method: method, handler: handler}
+}
+
+type proxyRoute struct {
+	pattern   string
+	method    string
+	reallyURL string
+}
+
+func (s *proxyRoute) Pattern() string {
+	return s.pattern
+}
+
+func (s *proxyRoute) Method() string {
+	return s.method
+}
+
+func (s *proxyRoute) Handler() func(http.ResponseWriter, *http.Request) {
+	return s.proxyFun
+}
+
+func (s *proxyRoute) proxyFun(res http.ResponseWriter, req *http.Request) {
+	url, err := url.Parse(s.reallyURL)
+	if err != nil {
+		log.Fatalf("illegal proxy really url, url:%s", s.reallyURL)
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.ServeHTTP(res, req)
+}
+
+// CreateProxyRoute create proxy route
+func CreateProxyRoute(pattern, method, reallyURL string) Route {
+	return &proxyRoute{pattern: pattern, method: method, reallyURL: reallyURL}
 }
 
 // 路由对象
