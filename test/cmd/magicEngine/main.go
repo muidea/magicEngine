@@ -16,7 +16,7 @@ func main() {
 
 	svr.Use(&test.Hello{})
 
-	svr.Use(&test.Test{})
+	//svr.Use(&test.Test{})
 
 	svr.Run()
 }

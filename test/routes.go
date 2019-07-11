@@ -9,7 +9,7 @@ import (
 
 // Append append router
 func Append(router engine.Router) {
-	router.AddRoute(&getRoute{})
+	router.AddRoute(&getRoute{}, &HelloRoute{})
 }
 
 type getRoute struct {
@@ -29,7 +29,7 @@ func (s *getRoute) Handler() func(http.ResponseWriter, *http.Request) {
 
 func (s *getRoute) getDemo(res http.ResponseWriter, req *http.Request) {
 	log.Print("getDemo....")
-	//res.WriteHeader(http.StatusOK)
-	//res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	//res.Write([]byte("getDemo...."))
+	res.WriteHeader(http.StatusOK)
+	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	res.Write([]byte("getDemo...."))
 }

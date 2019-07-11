@@ -18,3 +18,16 @@ func (s *Hello) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *
 
 	log.Print("Hello Handle")
 }
+
+// HelloRoute hello middleware
+type HelloRoute struct {
+}
+
+// Handle handle request
+func (s *HelloRoute) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
+	log.Print("Hello Route Handle before")
+
+	ctx.Next()
+
+	log.Print("Hello Route Handle after")
+}

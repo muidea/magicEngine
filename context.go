@@ -277,6 +277,10 @@ func (c *routeContext) Run() {
 	if !c.Written() {
 		InvokeRouteHandler(c.route.Handler(), c.context, c.rw, c.req)
 	}
+
+	if !c.Written() {
+		http.Error(c.rw, "", http.StatusNoContent)
+	}
 }
 
 func (c *routeContext) SetData(key string, value interface{}) {
