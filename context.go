@@ -215,6 +215,9 @@ func (c *requestContext) Run() {
 
 	if !c.Written() && c.router != nil {
 		c.router.Handle(c, c.rw, c.req)
+		if !c.Written() {
+			http.Error(c.rw, "", http.StatusNoContent)
+		}
 	} else {
 		// 到这里说明没有router，也没有对应的MiddleWareHandler
 		http.NotFound(c.rw, c.req)

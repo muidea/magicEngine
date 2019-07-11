@@ -1,6 +1,7 @@
 package magicengine
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -53,6 +54,8 @@ type static struct {
 
 // Static returns a middleware handler that serves static files in the given directory.
 func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
+	var err error
+
 	obj, ok := ctx.GetData(systemLogger)
 	if !ok {
 		panicInfo("cant\\'t get logger")
@@ -63,6 +66,12 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 	if !ok {
 		panicInfo("cant\\'t get static handler")
 	}
+
+	defer func() {
+		if err != nil {
+			ctx.Next()
+		}
+	}()
 
 	staticOpt := staticObj.(*StaticOptions)
 
@@ -79,44 +88,53 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 	opt := prepareStaticOptions(staticOpt)
 
 	if req.Method != "GET" && req.Method != "HEAD" {
+		err = fmt.Errorf("no matching http method found")
 		return
 	}
 	if opt.Exclude != "" && strings.HasPrefix(req.URL.Path, opt.Exclude) {
+		err = fmt.Errorf("the requested url was not found on this server")
 		return
 	}
+
 	file := req.URL.Path
+
 	// if we have a prefix, filter requests by stripping the prefix
 	if opt.Prefix != "" {
 		if !strings.HasPrefix(file, opt.Prefix) {
+			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
 		file = file[len(opt.Prefix):]
 		if file != "" && file[0] != '/' {
+			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
 	}
-	f, err := dir.Open(file)
-	if err != nil {
+
+	staticFile, staticErr := dir.Open(file)
+	if staticErr != nil {
 		// try any fallback before giving up
 		if opt.Fallback != "" {
 			file = opt.Fallback // so that logging stays true
-			f, err = dir.Open(opt.Fallback)
+			staticFile, staticErr = dir.Open(opt.Fallback)
 		}
 
-		if err != nil {
+		if staticErr != nil {
 			// discard the error?
+			err = staticErr
 			return
 		}
 	}
-	defer f.Close()
+	defer staticFile.Close()
 
-	fi, err := f.Stat()
-	if err != nil {
+	staticFileInfo, staticFileErr := staticFile.Stat()
+	if staticFileErr != nil {
+		err = staticFileErr
 		return
 	}
 
 	// try to serve index file
-	if fi.IsDir() {
+	if staticFileInfo.IsDir() {
 		// redirect if missing trailing slash
 		if !strings.HasSuffix(req.URL.Path, "/") {
 			dest := url.URL{
@@ -129,14 +147,20 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 		}
 
 		file = path.Join(file, opt.IndexFile)
-		f, err = dir.Open(file)
-		if err != nil {
+		staticFile, staticFileErr = dir.Open(file)
+		if staticFileErr != nil {
+			err = staticFileErr
 			return
 		}
-		defer f.Close()
+		defer staticFile.Close()
 
-		fi, err = f.Stat()
-		if err != nil || fi.IsDir() {
+		staticFileInfo, staticFileErr = staticFile.Stat()
+		if staticFileErr != nil {
+			err = staticFileErr
+			return
+		}
+		if staticFileInfo.IsDir() {
+			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
 	}
@@ -150,5 +174,5 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 		res.Header().Set("Expires", opt.Expires())
 	}
 
-	http.ServeContent(res, req, file, fi.ModTime(), f)
+	http.ServeContent(res, req, file, staticFileInfo.ModTime(), staticFile)
 }

@@ -25,7 +25,7 @@ type httpServer struct {
 // NewHTTPServer 新建HTTPServer
 func NewHTTPServer(bindPort string) HTTPServer {
 	listenAddr := fmt.Sprintf(":%s", bindPort)
-	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: log.New(os.Stdout, "[magic_engine] ", 0), staticOptions: &StaticOptions{Path: "static"}}
+	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: log.New(os.Stdout, "[magic_engine] ", 0), staticOptions: &StaticOptions{Path: "static", Prefix: "static"}}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})

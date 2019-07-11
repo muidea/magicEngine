@@ -11,7 +11,7 @@ func main() {
 
 	test.Append(router)
 
-	svr := engine.NewHTTPServer(":8010")
+	svr := engine.NewHTTPServer("8010")
 	svr.Bind(router)
 
 	svr.Use(&test.Hello{})
