@@ -10,6 +10,8 @@ import (
 // Append append router
 func Append(router engine.Router) {
 	router.AddRoute(&getRoute{}, &HelloRoute{})
+
+	router.AddRoute(engine.CreateProxyRoute("/proxy/abc", "GET", "http://127.0.0.1:8010/demo/12?ab=12"))
 }
 
 type getRoute struct {
@@ -28,6 +30,7 @@ func (s *getRoute) Handler() func(http.ResponseWriter, *http.Request) {
 }
 
 func (s *getRoute) getDemo(res http.ResponseWriter, req *http.Request) {
+	log.Print(req.URL)
 	log.Print("getDemo....")
 	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
