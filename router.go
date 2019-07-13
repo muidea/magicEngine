@@ -107,12 +107,6 @@ func (s *proxyRoute) proxyFun(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Print(req.URL)
-	log.Print(url)
-	//url.ForceQuery = req.URL.ForceQuery
-	//url.RawQuery = req.URL.RawQuery
-	//url.Fragment = req.URL.Fragment
-
 	proxy := newReverseProxy(url)
 	proxy.ServeHTTP(res, req)
 }
