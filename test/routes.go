@@ -11,7 +11,7 @@ import (
 func Append(router engine.Router) {
 	router.AddRoute(&getRoute{}, &HelloRoute{})
 
-	router.AddRoute(engine.CreateProxyRoute("/proxy/abc", "GET", "http://127.0.0.1:8010/demo/12?ab=12"))
+	router.AddRoute(engine.CreateProxyRoute("/proxy/abc", "GET", "http://127.0.0.1:8010/demo/12?ab=12", true))
 }
 
 type getRoute struct {

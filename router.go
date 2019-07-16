@@ -83,9 +83,10 @@ func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
 }
 
 type proxyRoute struct {
-	pattern   string
-	method    string
-	reallyURL string
+	pattern    string
+	method     string
+	reallyURL  string
+	rewriteURL bool
 }
 
 func (s *proxyRoute) Pattern() string {
@@ -107,13 +108,18 @@ func (s *proxyRoute) proxyFun(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	proxy := newReverseProxy(url)
-	proxy.ServeHTTP(res, req)
+	if s.rewriteURL {
+		proxy := newReverseProxy(url)
+		proxy.ServeHTTP(res, req)
+	} else {
+		proxy := httputil.NewSingleHostReverseProxy(url)
+		proxy.ServeHTTP(res, req)
+	}
 }
 
 // CreateProxyRoute create proxy route
-func CreateProxyRoute(pattern, method, reallyURL string) Route {
-	return &proxyRoute{pattern: pattern, method: method, reallyURL: reallyURL}
+func CreateProxyRoute(pattern, method, reallyURL string, rewriteURL bool) Route {
+	return &proxyRoute{pattern: pattern, method: method, reallyURL: reallyURL, rewriteURL: rewriteURL}
 }
 
 // 路由对象
