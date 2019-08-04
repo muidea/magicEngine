@@ -122,34 +122,18 @@ func CreateProxyRoute(pattern, method, reallyURL string, rewriteURL bool) Route 
 	return &proxyRoute{pattern: pattern, method: method, reallyURL: reallyURL, rewriteURL: rewriteURL}
 }
 
-// 路由对象
-type routeItem struct {
-	route   Route
-	filters []MiddleWareHandler
-	regex   *regexp.Regexp
-}
-
-func (s *routeItem) equal(rt Route) bool {
-	return s.route.Pattern() == rt.Pattern()
-}
-
-func (s *routeItem) match(path string) bool {
-	matches := s.regex.FindStringSubmatch(path)
-	if len(matches) > 0 && matches[0] == path {
-		return true
-	}
-
-	return false
+// PatternFilter route filter
+type PatternFilter struct {
+	regex *regexp.Regexp
 }
 
 var routeReg1 = regexp.MustCompile(`:[^/#?()\.\\]+`)
 var routeReg2 = regexp.MustCompile(`\*\*`)
 
-func newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
-	item := &routeItem{route: rt}
-	item.filters = append(item.filters, filters...)
-
-	pattern := routeReg1.ReplaceAllStringFunc(rt.Pattern(), func(m string) string {
+// NewPatternFilter new route filter
+func NewPatternFilter(routePattern string) *PatternFilter {
+	filter := &PatternFilter{}
+	pattern := routeReg1.ReplaceAllStringFunc(routePattern, func(m string) string {
 		return fmt.Sprintf(`(?P<%s>[^/#?]+)`, m[1:])
 	})
 	var index int
@@ -158,7 +142,40 @@ func newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
 		return fmt.Sprintf(`(?P<_%d>[^#?]*)`, index)
 	})
 	pattern += `\/?`
-	item.regex = regexp.MustCompile(pattern)
+	filter.regex = regexp.MustCompile(pattern)
+
+	return filter
+}
+
+// Match match path
+func (s *PatternFilter) Match(path string) bool {
+	matches := s.regex.FindStringSubmatch(path)
+	if len(matches) > 0 && matches[0] == path {
+		return true
+	}
+
+	return false
+}
+
+// 路由对象
+type routeItem struct {
+	route          Route
+	middlewareList []MiddleWareHandler
+	patternFilter  *PatternFilter
+}
+
+func (s *routeItem) equal(rt Route) bool {
+	return s.route.Pattern() == rt.Pattern()
+}
+
+func (s *routeItem) match(path string) bool {
+	return s.patternFilter.Match(path)
+}
+
+func newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
+	item := &routeItem{route: rt}
+	item.middlewareList = append(item.middlewareList, filters...)
+	item.patternFilter = NewPatternFilter(rt.Pattern())
 
 	return item
 }
@@ -252,7 +269,7 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 	var routeCtx RequestContext
 	for _, val := range routeSlice {
 		if val.match(req.URL.Path) {
-			routeCtx = NewRouteContext(ctx, val.filters, val.route, res, req)
+			routeCtx = NewRouteContext(ctx, val.middlewareList, val.route, res, req)
 			break
 		}
 	}
