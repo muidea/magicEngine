@@ -108,11 +108,20 @@ func (s *proxyRoute) proxyFun(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	errorHandler := func(res http.ResponseWriter, req *http.Request, err error) {
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write([]byte(err.Error()))
+	}
+
 	if s.rewriteURL {
 		proxy := newReverseProxy(url)
+		proxy.ErrorHandler = errorHandler
+
 		proxy.ServeHTTP(res, req)
 	} else {
 		proxy := httputil.NewSingleHostReverseProxy(url)
+		proxy.ErrorHandler = errorHandler
+
 		proxy.ServeHTTP(res, req)
 	}
 }
