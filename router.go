@@ -108,6 +108,11 @@ func (s *proxyRoute) proxyFun(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if url.Hostname() == "" {
+		http.Redirect(res, req, s.reallyURL, http.StatusSeeOther)
+		return
+	}
+
 	errorHandler := func(res http.ResponseWriter, req *http.Request, err error) {
 		res.WriteHeader(http.StatusInternalServerError)
 		res.Write([]byte(err.Error()))
