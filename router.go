@@ -109,7 +109,8 @@ func (s *proxyRoute) proxyFun(res http.ResponseWriter, req *http.Request) {
 	}
 
 	if url.Hostname() == "" {
-		http.Redirect(res, req, s.reallyURL, http.StatusSeeOther)
+		url.RawQuery = url.RawQuery + "&" + req.URL.RawQuery
+		http.Redirect(res, req, url.String(), http.StatusSeeOther)
 		return
 	}
 
