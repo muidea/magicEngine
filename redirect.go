@@ -18,7 +18,7 @@ func (s *redirectRoute) Pattern() string {
 
 func (s *redirectRoute) Handler() func(http.ResponseWriter, *http.Request) {
 	return func(res http.ResponseWriter, req *http.Request) {
-		http.Redirect(res, req, s.pattern, http.StatusSeeOther)
+		http.Redirect(res, req, s.redirectPattern, http.StatusSeeOther)
 	}
 }
 
