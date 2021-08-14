@@ -21,7 +21,7 @@ type RequestContext interface {
 	Next()
 	// Written returns whether or not the response for this context has been written.
 	Written() bool
-	// Run
+	// Run running request context
 	Run()
 }
 
@@ -202,8 +202,8 @@ func (c *requestContext) Written() bool {
 }
 
 func (c *requestContext) Run() {
-	totalSizxe := len(c.filters)
-	for c.index < totalSizxe {
+	totalSize := len(c.filters)
+	for c.index < totalSize {
 		handler := c.filters[c.index]
 		InvokeMiddleWareHandler(handler, c, c.rw, c.req)
 
@@ -263,8 +263,8 @@ func (c *routeContext) Written() bool {
 }
 
 func (c *routeContext) Run() {
-	totalSizxe := len(c.filters)
-	for c.index < totalSizxe {
+	totalSize := len(c.filters)
+	for c.index < totalSize {
 		handler := c.filters[c.index]
 		InvokeMiddleWareHandler(handler, c, c.rw, c.req)
 

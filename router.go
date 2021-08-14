@@ -22,7 +22,7 @@ const (
 
 // Route 路由接口
 type Route interface {
-	// Action 路由行为GET/PUT/POST/DELETE
+	// Method 路由行为GET/PUT/POST/DELETE
 	Method() string
 	// Pattern 路由规则, 以'/'开始
 	Pattern() string
@@ -32,11 +32,11 @@ type Route interface {
 
 // Router 路由器对象
 type Router interface {
-	// 增加路由
+	// AddRoute 增加路由
 	AddRoute(rt Route, filters ...MiddleWareHandler)
-	// 清除路由
+	// RemoveRoute 清除路由
 	RemoveRoute(rt Route)
-	// 分发一条请求
+	// Handle 分发一条请求
 	Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 }
 
@@ -192,14 +192,6 @@ func (s *routeItem) match(path string) bool {
 	return s.patternFilter.Match(path)
 }
 
-func newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
-	item := &routeItem{route: rt}
-	item.middlewareList = append(item.middlewareList, filters...)
-	item.patternFilter = NewPatternFilter(rt.Pattern())
-
-	return item
-}
-
 type routeItemSlice []*routeItem
 
 type router struct {
@@ -210,6 +202,14 @@ type router struct {
 // NewRouter 新建Router
 func NewRouter() Router {
 	return &router{routes: make(map[string]*routeItemSlice)}
+}
+
+func (s *router) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
+	item := &routeItem{route: rt}
+	item.middlewareList = append(item.middlewareList, filters...)
+	item.patternFilter = NewPatternFilter(rt.Pattern())
+
+	return item
 }
 
 func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
@@ -232,12 +232,12 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 			}
 		}
 
-		item := newRouteItem(rt, filters...)
+		item := s.newRouteItem(rt, filters...)
 		*routeSlice = append(*routeSlice, item)
 		return
 	}
 
-	item := newRouteItem(rt, filters...)
+	item := s.newRouteItem(rt, filters...)
 	routeSlice = &routeItemSlice{}
 	*routeSlice = append(*routeSlice, item)
 	s.routes[rt.Method()] = routeSlice
