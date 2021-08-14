@@ -32,6 +32,10 @@ type Route interface {
 
 // Router 路由器对象
 type Router interface {
+	// SetApiVersion 设置ApiVersion
+	SetApiVersion(version string)
+	// GetApiVersion 查询ApiVersion
+	GetApiVersion() string
 	// AddRoute 增加路由
 	AddRoute(rt Route, filters ...MiddleWareHandler)
 	// RemoveRoute 清除路由
@@ -195,8 +199,9 @@ func (s *routeItem) match(path string) bool {
 type routeItemSlice []*routeItem
 
 type router struct {
-	routes     map[string]*routeItemSlice
-	routesLock sync.RWMutex
+	currentApiVersion string
+	routes            map[string]*routeItemSlice
+	routesLock        sync.RWMutex
 }
 
 // NewRouter 新建Router
@@ -204,10 +209,24 @@ func NewRouter() Router {
 	return &router{routes: make(map[string]*routeItemSlice)}
 }
 
+func (s *router) SetApiVersion(version string) {
+	s.currentApiVersion = version
+}
+
+func (s *router) GetApiVersion() string {
+	return s.currentApiVersion
+}
+
 func (s *router) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
 	item := &routeItem{route: rt}
 	item.middlewareList = append(item.middlewareList, filters...)
-	item.patternFilter = NewPatternFilter(rt.Pattern())
+	rtPattern := rt.Pattern()
+	if s.currentApiVersion != "" {
+		rtPattern = fmt.Sprintf("%s%s", s.currentApiVersion, rtPattern)
+	}
+	item.patternFilter = NewPatternFilter(rtPattern)
+
+	log.Printf("[%s]:%s", rt.Method(), rtPattern)
 
 	return item
 }
@@ -217,8 +236,6 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	for _, val := range filters {
 		ValidateMiddleWareHandler(val)
 	}
-
-	log.Printf("[%s]:%s", rt.Method(), rt.Pattern())
 
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
