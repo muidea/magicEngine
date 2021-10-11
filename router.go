@@ -301,8 +301,15 @@ func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request)
 		}
 	}()
 
+	defer func() {
+		contentVal := res.Header().Get("Content-Type")
+		if contentVal == "" {
+			res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		}
+	}()
+
 	// set default content-type = "application/json; charset=utf-8"
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	//res.Header().Set("Content-Type", "application/json; charset=utf-8")
 	var routeCtx RequestContext
 	for _, val := range routeSlice {
 		if val.match(req.URL.Path) {
