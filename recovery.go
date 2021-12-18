@@ -114,8 +114,8 @@ type recovery struct {
 // Recovery returns a middleware that recovers from any panics and writes a 500 if there was one.
 // While Martini is in development mode, Recovery will also output the panic as HTML.
 func (s *recovery) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
-	obj, ok := ctx.GetData(systemLogger)
-	if !ok {
+	obj := ctx.Context().Value(systemLogger)
+	if obj == nil {
 		panicInfo("cant\\'t get logger")
 	}
 	log := obj.(*log.Logger)

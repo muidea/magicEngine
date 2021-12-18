@@ -1,6 +1,9 @@
 package magicengine
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 type redirectRoute struct {
 	pattern         string
@@ -16,8 +19,8 @@ func (s *redirectRoute) Pattern() string {
 	return s.pattern
 }
 
-func (s *redirectRoute) Handler() func(http.ResponseWriter, *http.Request) {
-	return func(res http.ResponseWriter, req *http.Request) {
+func (s *redirectRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+	return func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		http.Redirect(res, req, s.redirectPattern, http.StatusSeeOther)
 	}
 }

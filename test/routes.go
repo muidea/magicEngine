@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -25,11 +26,11 @@ func (s *getRoute) Pattern() string {
 	return "/demo/:id"
 }
 
-func (s *getRoute) Handler() func(http.ResponseWriter, *http.Request) {
+func (s *getRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
 	return s.getDemo
 }
 
-func (s *getRoute) getDemo(res http.ResponseWriter, req *http.Request) {
+func (s *getRoute) getDemo(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	log.Print(req.URL)
 	log.Print("getDemo....")
 	res.WriteHeader(http.StatusOK)
