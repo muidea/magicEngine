@@ -56,14 +56,14 @@ type static struct {
 func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
 
-	obj, ok := ctx.GetData(systemLogger)
-	if !ok {
+	obj := ctx.Context().Value(systemLogger)
+	if obj == nil {
 		panicInfo("cant\\'t get logger")
 	}
 	log := obj.(*log.Logger)
 
-	staticObj, ok := ctx.GetData(systemStatic)
-	if !ok {
+	staticObj := ctx.Context().Value(systemStatic)
+	if staticObj == nil {
 		panicInfo("cant\\'t get static handler")
 	}
 

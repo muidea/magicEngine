@@ -1,20 +1,14 @@
 package magicengine
 
 import (
+	"context"
 	"net/http"
 	"reflect"
 )
 
-// Context request base context
-type Context interface {
-	SetData(key string, value interface{})
-	GetData(key string) (interface{}, bool)
-	RemoveData(key string)
-}
-
 // RequestContext represents a request context. Services can be mapped on the request level from this interface.
 type RequestContext interface {
-	Context
+	Context() context.Context
 	// Next is an optional function that Middleware Handlers can call to yield the until after
 	// the other Handlers have been executed. This works really well for any operations that must
 	// happen after an http request
@@ -151,7 +145,7 @@ func ValidateRouteHandler(handler interface{}) {
 }
 
 // InvokeRouteHandler 执行RouteHandle
-func InvokeRouteHandler(handler interface{}, ctx Context, res http.ResponseWriter, req *http.Request) {
+func InvokeRouteHandler(handler interface{}, ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	handlerType := reflect.TypeOf(handler)
 	// 已经验证通过，所以这里就不用继续判断
 	//if handlerType.Kind() != reflect.Func {
@@ -184,12 +178,16 @@ type requestContext struct {
 	index   int
 
 	router  Router
-	dataMap map[string]interface{}
+	context context.Context
 }
 
 // NewRequestContext 新建Context
-func NewRequestContext(filters []MiddleWareHandler, router Router, res http.ResponseWriter, req *http.Request) RequestContext {
-	return &requestContext{filters: filters, router: router, rw: NewResponseWriter(res), req: req, index: 0, dataMap: make(map[string]interface{})}
+func NewRequestContext(filters []MiddleWareHandler, router Router, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
+	return &requestContext{filters: filters, router: router, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
+}
+
+func (c *requestContext) Context() context.Context {
+	return c.context
 }
 
 func (c *requestContext) Next() {
@@ -214,7 +212,7 @@ func (c *requestContext) Run() {
 	}
 
 	if !c.Written() && c.router != nil {
-		c.router.Handle(c, c.rw, c.req)
+		c.router.Handle(c.context, c.rw, c.req)
 		if !c.Written() {
 			http.Error(c.rw, "", http.StatusNoContent)
 		}
@@ -225,19 +223,6 @@ func (c *requestContext) Run() {
 	}
 }
 
-func (c *requestContext) SetData(key string, value interface{}) {
-	c.dataMap[key] = value
-}
-
-func (c *requestContext) GetData(key string) (interface{}, bool) {
-	val, ok := c.dataMap[key]
-	return val, ok
-}
-
-func (c *requestContext) RemoveData(key string) {
-	delete(c.dataMap, key)
-}
-
 type routeContext struct {
 	filters []MiddleWareHandler
 	rw      ResponseWriter
@@ -245,12 +230,16 @@ type routeContext struct {
 	index   int
 
 	route   Route
-	context Context
+	context context.Context
 }
 
 // NewRouteContext 新建Context
-func NewRouteContext(reqCtx Context, filters []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
+func NewRouteContext(reqCtx context.Context, filters []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
 	return &routeContext{filters: filters, route: route, rw: NewResponseWriter(res), req: req, index: 0, context: reqCtx}
+}
+
+func (c *routeContext) Context() context.Context {
+	return c.context
 }
 
 func (c *routeContext) Next() {
@@ -281,16 +270,4 @@ func (c *routeContext) Run() {
 	if !c.Written() {
 		http.Error(c.rw, "", http.StatusNoContent)
 	}
-}
-
-func (c *routeContext) SetData(key string, value interface{}) {
-	c.context.SetData(key, value)
-}
-
-func (c *routeContext) GetData(key string) (interface{}, bool) {
-	return c.context.GetData(key)
-}
-
-func (c *routeContext) RemoveData(key string) {
-	c.context.RemoveData(key)
 }

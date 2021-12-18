@@ -1,6 +1,7 @@
 package magicengine
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,10 +36,9 @@ func NewHTTPServer(bindPort string) HTTPServer {
 }
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-
-	ctx := NewRequestContext(s.filter.GetHandlers(), s.router, res, req)
-	ctx.SetData(systemLogger, s.logger)
-	ctx.SetData(systemStatic, s.staticOptions)
+	valueContext := context.WithValue(context.Background(), systemLogger, s.logger)
+	valueContext = context.WithValue(valueContext, systemStatic, s.staticOptions)
+	ctx := NewRequestContext(s.filter.GetHandlers(), s.router, valueContext, res, req)
 
 	ctx.Run()
 }

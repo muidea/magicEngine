@@ -1,6 +1,7 @@
 package magicengine
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -41,7 +42,7 @@ type Router interface {
 	// RemoveRoute 清除路由
 	RemoveRoute(rt Route)
 	// Handle 分发一条请求
-	Handle(ctx Context, res http.ResponseWriter, req *http.Request)
+	Handle(ctx context.Context, res http.ResponseWriter, req *http.Request)
 }
 
 type rtItem struct {
@@ -289,7 +290,7 @@ func (s *router) RemoveRoute(rt Route) {
 	s.routes[rt.Method()] = &newRoutes
 }
 
-func (s *router) Handle(ctx Context, res http.ResponseWriter, req *http.Request) {
+func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	var routeSlice routeItemSlice
 	func() {
 		s.routesLock.RLock()

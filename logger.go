@@ -11,9 +11,8 @@ type logger struct {
 
 // Logger returns a middleware handler that logs the request as it goes in and the response as it goes out.
 func (s *logger) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
-
-	obj, ok := ctx.GetData(systemLogger)
-	if !ok {
+	obj := ctx.Context().Value(systemLogger)
+	if obj == nil {
 		panicInfo("cant\\'t get logger")
 	}
 	log := obj.(*log.Logger)
