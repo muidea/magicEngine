@@ -14,7 +14,7 @@ func main() {
 	svr := engine.NewHTTPServer("8010")
 	svr.Bind(router)
 
-	svr.Use(&test.Hello{})
+	svr.Use(&test.MiddleWareHello{})
 
 	//svr.Use(&test.Test{})
 

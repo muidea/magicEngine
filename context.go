@@ -8,6 +8,7 @@ import (
 
 // RequestContext represents a request context. Services can be mapped on the request level from this interface.
 type RequestContext interface {
+	Update(ctx context.Context)
 	Context() context.Context
 	// Next is an optional function that Middleware Handlers can call to yield the until after
 	// the other Handlers have been executed. This works really well for any operations that must
@@ -186,6 +187,10 @@ func NewRequestContext(filters []MiddleWareHandler, router Router, ctx context.C
 	return &requestContext{filters: filters, router: router, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
 }
 
+func (c *requestContext) Update(ctx context.Context) {
+	c.context = ctx
+}
+
 func (c *requestContext) Context() context.Context {
 	return c.context
 }
@@ -236,6 +241,10 @@ type routeContext struct {
 // NewRouteContext 新建Context
 func NewRouteContext(reqCtx context.Context, filters []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
 	return &routeContext{filters: filters, route: route, rw: NewResponseWriter(res), req: req, index: 0, context: reqCtx}
+}
+
+func (c *routeContext) Update(ctx context.Context) {
+	c.context = ctx
 }
 
 func (c *routeContext) Context() context.Context {
