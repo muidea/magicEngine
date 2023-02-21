@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"net/textproto"
 	"net/url"
 	"regexp"
 	"strings"
@@ -290,6 +291,14 @@ func (s *router) RemoveRoute(rt Route) {
 	s.routes[rt.Method()] = &newRoutes
 }
 
+func (s *router) verifyContentType(res http.ResponseWriter) {
+	contentVal := textproto.CanonicalMIMEHeaderKey("content-type")
+	if contentVal != "" {
+		return
+	}
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+}
+
 func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	var routeSlice routeItemSlice
 	func() {
@@ -302,33 +311,22 @@ func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.
 		}
 	}()
 
-	defer func() {
-		contentVal := res.Header().Get("Content-Type")
-		if contentVal == "" {
-			res.Header().Set("Content-Type", "application/json; charset=utf-8")
-		}
-	}()
-
 	// set default content-type = "application/json; charset=utf-8"
 	//res.Header().Set("Content-Type", "application/json; charset=utf-8")
 	var routeCtx RequestContext
 	for _, val := range routeSlice {
 		if val.match(req.URL.Path) {
-			func() {
-				defer func() {
-					contentVal := res.Header().Get("Content-Type")
-					if contentVal == "" {
-						res.Header().Set("Content-Type", "application/json; charset=utf-8")
-					}
-				}()
-				routeCtx = NewRouteContext(ctx, val.middlewareList, val.route, res, req)
-			}()
+			routeCtx = NewRouteContext(ctx, val.middlewareList, val.route, res, req)
 			break
 		}
 	}
 
 	if routeCtx != nil {
-		routeCtx.Run()
+		func() {
+			defer s.verifyContentType(res)
+			routeCtx.Run()
+		}()
+
 		return
 	}
 
