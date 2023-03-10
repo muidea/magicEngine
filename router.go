@@ -291,12 +291,15 @@ func (s *router) RemoveRoute(rt Route) {
 	s.routes[rt.Method()] = &newRoutes
 }
 
+var contentType = textproto.CanonicalMIMEHeaderKey("content-type")
+
 func (s *router) verifyContentType(res http.ResponseWriter) {
-	contentVal := textproto.CanonicalMIMEHeaderKey("content-type")
+	contentVal := res.Header().Get(contentType)
 	if contentVal != "" {
 		return
 	}
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	res.Header().Set(contentType, "application/json; charset=utf-8")
 }
 
 func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
