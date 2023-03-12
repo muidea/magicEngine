@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
-	"net/textproto"
 	"net/url"
 	"regexp"
 	"strings"
@@ -291,21 +290,6 @@ func (s *router) RemoveRoute(rt Route) {
 	s.routes[rt.Method()] = &newRoutes
 }
 
-var contentType = textproto.CanonicalMIMEHeaderKey("content-type")
-
-func (s *router) verifyContentType(ctx RequestContext, res http.ResponseWriter) {
-	if !ctx.Written() {
-		return
-	}
-
-	contentVal := res.Header().Get(contentType)
-	if contentVal != "" {
-		return
-	}
-
-	res.Header().Set(contentType, "application/json; charset=utf-8")
-}
-
 func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	var routeSlice routeItemSlice
 	func() {
@@ -329,11 +313,7 @@ func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.
 	}
 
 	if routeCtx != nil {
-		func() {
-			defer s.verifyContentType(routeCtx, res)
-			routeCtx.Run()
-		}()
-
+		routeCtx.Run()
 		return
 	}
 

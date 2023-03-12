@@ -2,6 +2,7 @@ package magicengine
 
 import (
 	"net/http"
+	"net/textproto"
 )
 
 // ResponseWriter is a wrapper around http.ResponseWriter that provides extra information about
@@ -32,12 +33,24 @@ type responseWriter struct {
 	size   int
 }
 
+var contentType = textproto.CanonicalMIMEHeaderKey("content-type")
+
+func (rw *responseWriter) verifyContentType() {
+	contentVal := rw.Header().Get(contentType)
+	if contentVal != "" {
+		return
+	}
+	rw.Header().Set(contentType, "application/json; charset=utf-8")
+}
+
 func (rw *responseWriter) WriteHeader(s int) {
 	rw.ResponseWriter.WriteHeader(s)
 	rw.status = s
 }
 
 func (rw *responseWriter) Write(b []byte) (int, error) {
+	rw.verifyContentType()
+
 	if !rw.Written() {
 		// The status will be StatusOK if WriteHeader has not been called yet
 		rw.WriteHeader(http.StatusOK)
