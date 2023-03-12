@@ -293,7 +293,11 @@ func (s *router) RemoveRoute(rt Route) {
 
 var contentType = textproto.CanonicalMIMEHeaderKey("content-type")
 
-func (s *router) verifyContentType(res http.ResponseWriter) {
+func (s *router) verifyContentType(ctx RequestContext, res http.ResponseWriter) {
+	if !ctx.Written() {
+		return
+	}
+
 	contentVal := res.Header().Get(contentType)
 	if contentVal != "" {
 		return
@@ -326,7 +330,7 @@ func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.
 
 	if routeCtx != nil {
 		func() {
-			defer s.verifyContentType(res)
+			defer s.verifyContentType(routeCtx, res)
 			routeCtx.Run()
 		}()
 
