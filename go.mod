@@ -1,3 +1,3 @@
 module github.com/muidea/magicEngine
 
-go 1.14
+go 1.19
