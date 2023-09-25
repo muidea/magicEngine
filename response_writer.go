@@ -5,20 +5,13 @@ import (
 	"net/textproto"
 )
 
-// ResponseWriter is a wrapper around http.ResponseWriter that provides extra information about
-// the response. It is recommended that middleware handlers use this construct to wrap a responsewriter
-// if the functionality calls for it.
 type ResponseWriter interface {
 	http.ResponseWriter
-	// Status returns the status code of the response or 0 if the response has not been written.
 	Status() int
-	// Written returns whether or not the ResponseWriter has been written.
 	Written() bool
-	// Size returns the size of the response body.
 	Size() int
 }
 
-// NewResponseWriter creates a ResponseWriter that wraps an http.ResponseWriter
 func NewResponseWriter(rw http.ResponseWriter) ResponseWriter {
 	newRw := responseWriter{rw, 0, 0}
 	if cn, ok := rw.(http.CloseNotifier); ok {
@@ -52,7 +45,6 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	rw.verifyContentType()
 
 	if !rw.Written() {
-		// The status will be StatusOK if WriteHeader has not been called yet
 		rw.WriteHeader(http.StatusOK)
 	}
 	size, err := rw.ResponseWriter.Write(b)

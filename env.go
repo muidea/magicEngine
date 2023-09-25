@@ -11,10 +11,8 @@ const (
 	Test string = "test"
 )
 
-// Env is the environment that Martini is executing in. The MAGICENGINE_ENV is read on initialization to set this variable.
 var Env = Dev
 
-// Root is current work path
 var Root string
 
 func setENV(e string) {

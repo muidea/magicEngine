@@ -60,7 +60,7 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 	if obj == nil {
 		panicInfo("cant\\'t get logger")
 	}
-	log := obj.(*log.Logger)
+	logPtr := obj.(*log.Logger)
 
 	staticObj := ctx.Context().Value(systemStatic)
 	if staticObj == nil {
@@ -166,7 +166,7 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 	}
 
 	if !opt.SkipLogging {
-		log.Println("[Static] Serving " + file)
+		logPtr.Println("[Static] Serving " + file)
 	}
 
 	// Add an Expires header to the static content

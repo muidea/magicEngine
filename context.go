@@ -6,17 +6,11 @@ import (
 	"reflect"
 )
 
-// RequestContext represents a request context. Services can be mapped on the request level from this interface.
 type RequestContext interface {
 	Update(ctx context.Context)
 	Context() context.Context
-	// Next is an optional function that Middleware Handlers can call to yield the until after
-	// the other Handlers have been executed. This works really well for any operations that must
-	// happen after an http request
 	Next()
-	// Written returns whether or not the response for this context has been written.
 	Written() bool
-	// Run running request context
 	Run()
 }
 

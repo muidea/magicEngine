@@ -227,7 +227,7 @@ func (s *router) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem
 	}
 	item.patternFilter = NewPatternFilter(rtPattern)
 
-	log.Printf("[%s]:%s", rt.Method(), rtPattern)
+	getLogger().Printf("[%s]:%s", rt.Method(), rtPattern)
 
 	return item
 }

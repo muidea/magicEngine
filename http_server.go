@@ -6,7 +6,21 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
+
+var loggerPtr *log.Logger
+var loggerOnce sync.Once
+
+func init() {
+	loggerOnce.Do(func() {
+		loggerPtr = log.New(os.Stdout, "[magic_engine] ", log.LstdFlags|log.Lmsgprefix)
+	})
+}
+
+func getLogger() *log.Logger {
+	return loggerPtr
+}
 
 // HTTPServer HTTPServer
 type HTTPServer interface {
@@ -26,7 +40,7 @@ type httpServer struct {
 // NewHTTPServer 新建HTTPServer
 func NewHTTPServer(bindPort string) HTTPServer {
 	listenAddr := fmt.Sprintf(":%s", bindPort)
-	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: log.New(os.Stdout, "[magic_engine] ", log.LstdFlags), staticOptions: &StaticOptions{Path: "static", Prefix: "static"}}
+	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: loggerPtr, staticOptions: &StaticOptions{Path: "static", Prefix: "static"}}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
