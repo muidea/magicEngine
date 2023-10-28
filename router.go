@@ -21,10 +21,6 @@ const (
 	OPTIONS = "OPTIONS"
 )
 
-const (
-	DynamicID = "X-ENGINE-DYNAMIC-ID"
-)
-
 // Route 路由接口
 type Route interface {
 	// Method 路由行为GET/PUT/POST/DELETE
@@ -110,41 +106,36 @@ func (s *proxyRoute) Handler() func(context.Context, http.ResponseWriter, *http.
 	return s.proxyFun
 }
 
-func (s *proxyRoute) proxyFun(_ context.Context, res http.ResponseWriter, req *http.Request) {
-	urlVal, err := url.Parse(s.reallyURL)
+func (s *proxyRoute) proxyFun(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	url, err := url.Parse(s.reallyURL)
 	if err != nil {
 		log.Fatalf("illegal proxy really url, url:%s", s.reallyURL)
 		return
 	}
 
-	dynamicID := req.Header.Get(DynamicID)
-	if dynamicID != "" {
-		urlVal.Path = strings.Replace(urlVal.Path, ":ID", dynamicID, -1)
-	}
-
-	if urlVal.Hostname() == "" {
-		if urlVal.RawQuery != "" {
-			urlVal.RawQuery = urlVal.RawQuery + "&" + req.URL.RawQuery
+	if url.Hostname() == "" {
+		if url.RawQuery != "" {
+			url.RawQuery = url.RawQuery + "&" + req.URL.RawQuery
 		} else {
-			urlVal.RawQuery = req.URL.RawQuery
+			url.RawQuery = req.URL.RawQuery
 		}
 
-		http.Redirect(res, req, urlVal.String(), http.StatusSeeOther)
+		http.Redirect(res, req, url.String(), http.StatusSeeOther)
 		return
 	}
 
 	errorHandler := func(res http.ResponseWriter, req *http.Request, err error) {
 		res.WriteHeader(http.StatusInternalServerError)
-		_, _ = res.Write([]byte(err.Error()))
+		res.Write([]byte(err.Error()))
 	}
 
 	if s.rewriteURL {
-		proxy := newReverseProxy(urlVal)
+		proxy := newReverseProxy(url)
 		proxy.ErrorHandler = errorHandler
 
 		proxy.ServeHTTP(res, req)
 	} else {
-		proxy := httputil.NewSingleHostReverseProxy(urlVal)
+		proxy := httputil.NewSingleHostReverseProxy(url)
 		proxy.ErrorHandler = errorHandler
 
 		proxy.ServeHTTP(res, req)
