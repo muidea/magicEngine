@@ -22,7 +22,8 @@ const (
 )
 
 const (
-	DynamicID = "X-ENGINE-DYNAMIC-ID"
+	DynamicTag   = "X-ENGINE-DYNAMIC-TAG"
+	DynamicValue = "X-ENGINE-DYNAMIC-VALUE"
 )
 
 // Route 路由接口
@@ -117,9 +118,10 @@ func (s *proxyRoute) proxyFun(_ context.Context, res http.ResponseWriter, req *h
 		return
 	}
 
-	dynamicID := req.Header.Get(DynamicID)
-	if dynamicID != "" {
-		urlVal.Path = strings.Replace(urlVal.Path, ":ID", dynamicID, -1)
+	dynamicTAG := req.Header.Get(DynamicTag)
+	dynamicValue := req.Header.Get(DynamicValue)
+	if dynamicTAG != "" && dynamicValue != "" {
+		urlVal.Path = strings.Replace(urlVal.Path, dynamicTAG, dynamicValue, -1)
 	}
 
 	if urlVal.Hostname() == "" {
