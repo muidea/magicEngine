@@ -10,38 +10,40 @@ import (
 
 // MiddleWareHello hello middleware
 type MiddleWareHello struct {
+	Index int
 }
 
 // Handle handle request
 func (s *MiddleWareHello) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
 	curCtx := ctx.Context()
 
-	log.Printf("curValue:%v", curCtx.Value("hello"))
+	log.Printf("MiddleWareHello Handle, index:%d,curValue:%v", s.Index, curCtx.Value("hello"))
 	newCtx := context.WithValue(curCtx, "hello", "1234")
 	ctx.Update(newCtx)
 
 	ctx.Next()
 
 	ctx.Update(curCtx)
-	log.Print("MiddleWareHello Handle")
+	log.Printf("MiddleWareHello Handle, index:%d", s.Index)
 }
 
 // HelloMiddleWareRoute hello middleware
 type HelloMiddleWareRoute struct {
+	Index int
 }
 
 // Handle handle request
 func (s *HelloMiddleWareRoute) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
-	log.Print("MiddleWareHello Route Handle before")
+	log.Printf("MiddleWareHello Route Handle before, index:%d", s.Index)
 
 	curCtx := ctx.Context()
 
-	log.Printf("curValue:%v", curCtx.Value("hello"))
+	log.Printf("index:%d,curValue:%v", s.Index, curCtx.Value("hello"))
 	newCtx := context.WithValue(curCtx, "hello", "abcd")
 	ctx.Update(newCtx)
 
 	ctx.Next()
 
 	ctx.Update(curCtx)
-	log.Print("MiddleWareHello Route Handle after")
+	log.Printf("MiddleWareHello Route Handle after, index:%d", s.Index)
 }
