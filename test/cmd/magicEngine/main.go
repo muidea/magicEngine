@@ -18,7 +18,7 @@ func main() {
 	svr.Use(&test.MiddleWareHello{Index: 101})
 	svr.Use(&test.MiddleWareHello{Index: 102})
 
-	svr.Use(&test.Test{})
+	//svr.Use(&test.Test{Index: 103})
 
 	svr.Run()
 }

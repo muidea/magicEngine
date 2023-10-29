@@ -10,7 +10,7 @@ import (
 
 // Append append router
 func Append(router engine.Router) {
-	router.AddRoute(&getRoute{}, &HelloMiddleWareRoute{})
+	router.AddRoute(&getRoute{}, &HelloMiddleWareRoute{Index: 200})
 
 	router.AddRoute(&getRoute2{})
 
