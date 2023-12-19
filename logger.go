@@ -26,10 +26,17 @@ func (s *logger) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 		}
 	}
 
-	logPtr.Printf("Started %s %s for %s", req.Method, req.URL.Path, addr)
+	if EnableTrace() {
+		logPtr.Printf("Started %s %s for %s", req.Method, req.URL.Path, addr)
+	}
 
 	rw := res.(ResponseWriter)
 	ctx.Next()
 
-	logPtr.Printf("Completed %v %s in %v\n", rw.Status(), http.StatusText(rw.Status()), time.Since(start))
+	elapseVal := time.Since(start)
+	if EnableTrace() {
+		logPtr.Printf("Completed %v %s in %v", rw.Status(), http.StatusText(rw.Status()), elapseVal)
+	} else if elapseVal >= GetElapseThreshold() {
+		logPtr.Printf("Handle %s %s for %s %v in %v", req.Method, req.URL.Path, addr, rw.Status(), elapseVal)
+	}
 }

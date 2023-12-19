@@ -2,6 +2,8 @@ package magicengine
 
 import (
 	"os"
+	"strconv"
+	"time"
 )
 
 // Envs
@@ -14,6 +16,9 @@ const (
 var Env = Dev
 
 var Root string
+
+var enableTrace = false
+var elapseThreshold = 10 * time.Second
 
 func setENV(e string) {
 	if len(e) > 0 {
@@ -28,4 +33,25 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+
+	enableTrace = Env != Prod
+
+	elapseStr := os.Getenv("MAGICENGINE_ELAPSE")
+	if elapseStr != "" {
+		elapseVal, elapseErr := strconv.ParseInt(elapseStr, 10, 32)
+		if elapseErr == nil {
+			if elapseVal <= 0 {
+				elapseVal = 1
+			}
+			elapseThreshold = time.Duration(elapseVal) * time.Second
+		}
+	}
+}
+
+func EnableTrace() bool {
+	return enableTrace
+}
+
+func GetElapseThreshold() time.Duration {
+	return elapseThreshold
 }
