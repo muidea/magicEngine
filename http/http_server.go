@@ -1,26 +1,12 @@
-package magicengine
+package http
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"sync"
+
+	"github.com/muidea/magicCommon/foundation/log"
 )
-
-var loggerPtr *log.Logger
-var loggerOnce sync.Once
-
-func init() {
-	loggerOnce.Do(func() {
-		loggerPtr = log.New(os.Stdout, "[magic_engine] ", log.LstdFlags|log.Lmsgprefix)
-	})
-}
-
-func getLogger() *log.Logger {
-	return loggerPtr
-}
 
 // HTTPServer HTTPServer
 type HTTPServer interface {
@@ -33,14 +19,13 @@ type httpServer struct {
 	listenAddr    string
 	router        Router
 	filter        MiddleWareChains
-	logger        *log.Logger
 	staticOptions *StaticOptions
 }
 
 // NewHTTPServer 新建HTTPServer
 func NewHTTPServer(bindPort string) HTTPServer {
 	listenAddr := fmt.Sprintf(":%s", bindPort)
-	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), logger: loggerPtr, staticOptions: &StaticOptions{Path: "static", Prefix: "static"}}
+	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), staticOptions: &StaticOptions{Path: "static", Prefix: "static"}}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
@@ -50,8 +35,7 @@ func NewHTTPServer(bindPort string) HTTPServer {
 }
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	valueContext := context.WithValue(context.Background(), systemLogger, s.logger)
-	valueContext = context.WithValue(valueContext, systemStatic, s.staticOptions)
+	valueContext := context.WithValue(context.Background(), systemStatic, s.staticOptions)
 	ctx := NewRequestContext(s.filter.GetHandlers(), s.router, valueContext, res, req)
 
 	ctx.Run()
@@ -66,8 +50,8 @@ func (s *httpServer) Bind(router Router) {
 }
 
 func (s *httpServer) Run() {
-	traceInfo(s.logger, "listening on "+s.listenAddr)
+	traceInfo("listening on " + s.listenAddr)
 
 	err := http.ListenAndServe(s.listenAddr, s)
-	log.Fatalf("run httpserver fatal, err:%s", err.Error())
+	log.Criticalf("run httpserver fatal, err:%s", err.Error())
 }

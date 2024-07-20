@@ -1,17 +1,17 @@
 package main
 
 import (
-	engine "github.com/muidea/magicEngine"
+	"github.com/muidea/magicEngine/http"
 	"github.com/muidea/magicEngine/test"
 )
 
 func main() {
 
-	router := engine.NewRouter()
+	router := http.NewRouter()
 
 	test.Append(router)
 
-	svr := engine.NewHTTPServer("8010")
+	svr := http.NewHTTPServer("8010")
 	svr.Bind(router)
 
 	svr.Use(&test.MiddleWareHello{Index: 100})

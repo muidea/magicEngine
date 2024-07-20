@@ -1,12 +1,13 @@
-package magicengine
+package http
 
 import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"runtime"
+
+	"github.com/muidea/magicCommon/foundation/log"
 )
 
 const (
@@ -114,16 +115,10 @@ type recovery struct {
 // Recovery returns a middleware that recovers from any panics and writes a 500 if there was one.
 // While Martini is in development mode, Recovery will also output the panic as HTML.
 func (s *recovery) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
-	obj := ctx.Context().Value(systemLogger)
-	if obj == nil {
-		panicInfo("cant\\'t get logger")
-	}
-	log := obj.(*log.Logger)
-
 	defer func() {
 		if err := recover(); err != nil {
 			stack := stack(3)
-			log.Printf("PANIC: %s\n%s", err, stack)
+			log.Errorf("PANIC: %s\n%s", err, stack)
 
 			// respond with panic message while in development mode
 			var body []byte

@@ -2,10 +2,9 @@ package test
 
 import (
 	"context"
-	"log"
+	"github.com/muidea/magicCommon/foundation/log"
+	engine "github.com/muidea/magicEngine/http"
 	"net/http"
-
-	engine "github.com/muidea/magicEngine"
 )
 
 // Append append router
@@ -33,9 +32,9 @@ func (s *getRoute) Handler() func(context.Context, http.ResponseWriter, *http.Re
 }
 
 func (s *getRoute) getDemo(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	log.Print(req.URL)
-	log.Print("getDemo....")
-	log.Printf("hello=%v", ctx.Value("hello"))
+	log.Infof(req.URL.String())
+	log.Infof("getDemo....")
+	log.Infof("hello=%v", ctx.Value("hello"))
 	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Write([]byte("getDemo...."))
@@ -57,9 +56,9 @@ func (s *getRoute2) Handler() func(context.Context, http.ResponseWriter, *http.R
 }
 
 func (s *getRoute2) getDemo(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	log.Print(req.URL)
-	log.Print("getDemo2....")
-	log.Printf("hello=%v", ctx.Value("hello"))
+	log.Infof(req.URL.String())
+	log.Infof("getDemo2....")
+	log.Infof("hello=%v", ctx.Value("hello"))
 	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Write([]byte("getDemo...."))

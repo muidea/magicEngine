@@ -1,16 +1,16 @@
-package magicengine
+package http
 
 import (
 	"fmt"
-	"log"
+
+	"github.com/muidea/magicCommon/foundation/log"
 )
 
 const serverName = "magic_engine"
-const systemLogger = "systemLogger"
 const systemStatic = "systemStatic"
 
-func traceInfo(logger *log.Logger, info string) {
-	logger.Printf("%s", info)
+func traceInfo(info string) {
+	log.Infof(info)
 }
 
 func panicInfo(info string) {

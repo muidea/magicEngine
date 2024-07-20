@@ -1,13 +1,14 @@
-package magicengine
+package http
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/muidea/magicCommon/foundation/log"
 )
 
 // StaticOptions is a struct for specifying configuration options for the martini.Static middleware.
@@ -55,13 +56,6 @@ type static struct {
 // Static returns a middleware handler that serves static files in the given directory.
 func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
-
-	obj := ctx.Context().Value(systemLogger)
-	if obj == nil {
-		panicInfo("cant\\'t get logger")
-	}
-	logPtr := obj.(*log.Logger)
-
 	staticObj := ctx.Context().Value(systemStatic)
 	if staticObj == nil {
 		panicInfo("cant\\'t get static handler")
@@ -166,7 +160,7 @@ func (s *static) Handle(ctx RequestContext, res http.ResponseWriter, req *http.R
 	}
 
 	if !opt.SkipLogging {
-		logPtr.Println("[Static] Serving " + file)
+		log.Infof("[Static] Serving " + file)
 	}
 
 	// Add an Expires header to the static content

@@ -1,10 +1,10 @@
 package test
 
 import (
-	"log"
 	"net/http"
 
-	engine "github.com/muidea/magicEngine"
+	"github.com/muidea/magicCommon/foundation/log"
+	engine "github.com/muidea/magicEngine/http"
 )
 
 // Test hello middleware
@@ -14,7 +14,7 @@ type Test struct {
 
 // Handle handle request
 func (s *Test) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
-	log.Printf("Test Handle, index:%d", s.Index)
+	log.Infof("Test Handle, index:%d", s.Index)
 	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.Write([]byte("test world"))

@@ -1,6 +1,8 @@
-package magicengine
+package http
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestPatternFilter_Match(t *testing.T) {
 	filter := NewPatternFilter("/api/v1/**")

@@ -1,4 +1,4 @@
-package magicengine
+package http
 
 import (
 	"os"

@@ -1,15 +1,16 @@
-package magicengine
+package http
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/muidea/magicCommon/foundation/log"
 )
 
 // 基本HTTP行为定义
@@ -114,7 +115,7 @@ func (s *proxyRoute) Handler() func(context.Context, http.ResponseWriter, *http.
 func (s *proxyRoute) proxyFun(_ context.Context, res http.ResponseWriter, req *http.Request) {
 	urlVal, err := url.Parse(s.reallyURL)
 	if err != nil {
-		log.Fatalf("illegal proxy really url, url:%s", s.reallyURL)
+		log.Criticalf("illegal proxy really url, url:%s", s.reallyURL)
 		return
 	}
 
@@ -238,7 +239,7 @@ func (s *router) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem
 	}
 	item.patternFilter = NewPatternFilter(rtPattern)
 
-	getLogger().Printf("[%s]:%s", rt.Method(), rtPattern)
+	log.Infof("[%s]:%s", rt.Method(), rtPattern)
 
 	return item
 }

@@ -1,0 +1,4 @@
+github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 h1:kHaBemcxl8o/pQ5VM1c8PVE1PubbNx3mjUr09OqWGCs=
+github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575/go.mod h1:9d6lWj8KzO/fd/NrVaLscBKmPigpZpn5YawRPw+e3Yo=
+github.com/muidea/magicCommon v1.3.82 h1:Ayvyj4vzeJN7vWqYHj3p8alK9uzyeaGbcp70o67pMsw=
+github.com/muidea/magicCommon v1.3.82/go.mod h1:nkBzVS6TaDY7yOrFwok53hGyqt+CaVjt0Lgma+ZdU9s=
