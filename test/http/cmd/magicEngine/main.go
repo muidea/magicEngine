@@ -7,7 +7,7 @@ import (
 
 func main() {
 
-	router := http.NewRouter()
+	router := http.NewRouteRegistry()
 
 	http2.Append(router)
 

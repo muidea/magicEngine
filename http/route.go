@@ -37,8 +37,8 @@ type Route interface {
 	Handler() func(context.Context, http.ResponseWriter, *http.Request)
 }
 
-// Router 路由器对象
-type Router interface {
+// RouteRegistry 路由器对象
+type RouteRegistry interface {
 	// SetApiVersion 设置ApiVersion
 	SetApiVersion(version string)
 	// GetApiVersion 查询ApiVersion
@@ -47,6 +47,10 @@ type Router interface {
 	AddRoute(rt Route, filters ...MiddleWareHandler)
 	// RemoveRoute 清除路由
 	RemoveRoute(rt Route)
+	// AddHandler 增加Handler
+	AddHandler(pattern, method string, handler func(context.Context, http.ResponseWriter, *http.Request), filters ...MiddleWareHandler)
+	// RemoveHandler 清除Handler
+	RemoveHandler(pattern, method string)
 	// Handle 分发一条请求
 	Handle(ctx context.Context, res http.ResponseWriter, req *http.Request)
 }
@@ -184,7 +188,6 @@ func NewPatternFilter(routePattern string) *PatternFilter {
 	return filter
 }
 
-// Match match path
 func (s *PatternFilter) Match(path string) bool {
 	matches := s.regex.FindStringSubmatch(path)
 	if len(matches) > 0 && matches[0] == path {
@@ -205,32 +208,36 @@ func (s *routeItem) equal(rt Route) bool {
 	return s.route.Pattern() == rt.Pattern()
 }
 
+func (s *routeItem) equalPattern(pattern string) bool {
+	return s.route.Pattern() == pattern
+}
+
 func (s *routeItem) match(path string) bool {
 	return s.patternFilter.Match(path)
 }
 
 type routeItemSlice []*routeItem
 
-type router struct {
+type routeRegistry struct {
 	currentApiVersion string
 	routes            map[string]*routeItemSlice
 	routesLock        sync.RWMutex
 }
 
-// NewRouter 新建Router
-func NewRouter() Router {
-	return &router{routes: make(map[string]*routeItemSlice)}
+// NewRouteRegistry 新建Route registry
+func NewRouteRegistry() RouteRegistry {
+	return &routeRegistry{routes: make(map[string]*routeItemSlice)}
 }
 
-func (s *router) SetApiVersion(version string) {
+func (s *routeRegistry) SetApiVersion(version string) {
 	s.currentApiVersion = version
 }
 
-func (s *router) GetApiVersion() string {
+func (s *routeRegistry) GetApiVersion() string {
 	return s.currentApiVersion
 }
 
-func (s *router) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
+func (s *routeRegistry) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
 	item := &routeItem{route: rt}
 	item.middlewareList = append(item.middlewareList, filters...)
 	rtPattern := rt.Pattern()
@@ -244,7 +251,7 @@ func (s *router) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem
 	return item
 }
 
-func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
+func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	ValidateRouteHandler(rt.Handler())
 	for _, val := range filters {
 		ValidateMiddleWareHandler(val)
@@ -273,19 +280,34 @@ func (s *router) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	s.routes[rt.Method()] = routeSlice
 }
 
-func (s *router) RemoveRoute(rt Route) {
+func (s *routeRegistry) RemoveRoute(rt Route) {
+	s.removeRouteImpl(rt.Pattern(), rt.Method())
+}
+
+func (s *routeRegistry) AddHandler(pattern, method string,
+	handler func(context.Context, http.ResponseWriter, *http.Request),
+	filters ...MiddleWareHandler) {
+	rt := CreateRoute(pattern, method, handler)
+	s.AddRoute(rt, filters...)
+}
+
+func (s *routeRegistry) RemoveHandler(pattern, method string) {
+	s.removeRouteImpl(pattern, method)
+}
+
+func (s *routeRegistry) removeRouteImpl(pattern, method string) {
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
 
-	routeSlice, ok := s.routes[rt.Method()]
+	routeSlice, ok := s.routes[method]
 	if !ok {
-		msg := fmt.Sprintf("no found route!, pattern:%s, method:%s", rt.Pattern(), rt.Method())
+		msg := fmt.Sprintf("no found route!, pattern:%s, method:%s", pattern, method)
 		panicInfo(msg)
 	}
 
 	newRoutes := routeItemSlice{}
 	for idx, val := range *routeSlice {
-		if val.equal(rt) {
+		if val.equalPattern(pattern) {
 			if idx > 0 {
 				newRoutes = append(newRoutes, (*routeSlice)[0:idx]...)
 			}
@@ -299,10 +321,10 @@ func (s *router) RemoveRoute(rt Route) {
 		}
 	}
 
-	s.routes[rt.Method()] = &newRoutes
+	s.routes[method] = &newRoutes
 }
 
-func (s *router) Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+func (s *routeRegistry) Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	var routeSlice routeItemSlice
 	func() {
 		s.routesLock.RLock()

@@ -13,8 +13,8 @@ type MiddleWareHello struct {
 	Index int
 }
 
-// Handle handle request
-func (s *MiddleWareHello) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
+// MiddleWareHandle handle request
+func (s *MiddleWareHello) MiddleWareHandle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
 	curCtx := ctx.Context()
 
 	log.Infof("MiddleWareHello Handle, index:%d,curValue:%v", s.Index, curCtx.Value("hello"))
@@ -32,8 +32,8 @@ type HelloMiddleWareRoute struct {
 	Index int
 }
 
-// Handle handle request
-func (s *HelloMiddleWareRoute) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
+// MiddleWareHandle handle request
+func (s *HelloMiddleWareRoute) MiddleWareHandle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
 	log.Infof("MiddleWareHello Route Handle before, index:%d", s.Index)
 
 	curCtx := ctx.Context()

@@ -7,7 +7,7 @@ import (
 
 // MiddleWareHandler 中间件处理器
 type MiddleWareHandler interface {
-	Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request)
+	MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request)
 }
 
 // MiddleWareChains 处理器链

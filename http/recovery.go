@@ -114,7 +114,7 @@ type recovery struct {
 
 // Recovery returns a middleware that recovers from any panics and writes a 500 if there was one.
 // While Martini is in development mode, Recovery will also output the panic as HTML.
-func (s *recovery) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
+func (s *recovery) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			stack := stack(3)

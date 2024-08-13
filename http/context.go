@@ -172,13 +172,13 @@ type requestContext struct {
 	req     *http.Request
 	index   int
 
-	router  Router
-	context context.Context
+	routeRegistry RouteRegistry
+	context       context.Context
 }
 
 // NewRequestContext 新建Context
-func NewRequestContext(filters []MiddleWareHandler, router Router, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
-	return &requestContext{filters: filters, router: router, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
+func NewRequestContext(filters []MiddleWareHandler, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
+	return &requestContext{filters: filters, routeRegistry: routeRegistry, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
 }
 
 func (c *requestContext) Update(ctx context.Context) {
@@ -210,8 +210,8 @@ func (c *requestContext) Run() {
 		}
 	}
 
-	if !c.Written() && c.router != nil {
-		c.router.Handle(c.context, c.rw, c.req)
+	if !c.Written() && c.routeRegistry != nil {
+		c.routeRegistry.Handle(c.context, c.rw, c.req)
 		if !c.Written() {
 			http.Error(c.rw, "", http.StatusNoContent)
 		}

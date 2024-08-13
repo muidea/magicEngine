@@ -2,18 +2,19 @@ package http
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/muidea/magicCommon/foundation/log"
 	engine "github.com/muidea/magicEngine/http"
-	"net/http"
 )
 
-// Append append router
-func Append(router engine.Router) {
-	router.AddRoute(&getRoute{}, &HelloMiddleWareRoute{Index: 200})
+// Append append routeRegistry
+func Append(routeRegistry engine.RouteRegistry) {
+	routeRegistry.AddRoute(&getRoute{}, &HelloMiddleWareRoute{Index: 200})
 
-	router.AddRoute(&getRoute2{})
+	routeRegistry.AddRoute(&getRoute2{})
 
-	router.AddRoute(engine.CreateProxyRoute("/proxy/abc", "GET", "http://127.0.0.1:8010/demo/12?ab=12", true))
+	routeRegistry.AddRoute(engine.CreateProxyRoute("/proxy/abc", "GET", "http://127.0.0.1:8010/demo/12?ab=12", true))
 }
 
 type getRoute struct {

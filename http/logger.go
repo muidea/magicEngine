@@ -11,7 +11,7 @@ type logger struct {
 	serialNo int64
 }
 
-func (s *logger) Handle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
+func (s *logger) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	start := time.Now()
 
 	addr := req.Header.Get("X-Real-IP")

@@ -11,13 +11,13 @@ import (
 // HTTPServer HTTPServer
 type HTTPServer interface {
 	Use(handler MiddleWareHandler)
-	Bind(router Router)
+	Bind(routeRegistry RouteRegistry)
 	Run()
 }
 
 type httpServer struct {
 	listenAddr    string
-	router        Router
+	routeRegistry RouteRegistry
 	filter        MiddleWareChains
 	staticOptions *StaticOptions
 }
@@ -36,7 +36,7 @@ func NewHTTPServer(bindPort string) HTTPServer {
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	valueContext := context.WithValue(context.Background(), systemStatic, s.staticOptions)
-	ctx := NewRequestContext(s.filter.GetHandlers(), s.router, valueContext, res, req)
+	ctx := NewRequestContext(s.filter.GetHandlers(), s.routeRegistry, valueContext, res, req)
 
 	ctx.Run()
 }
@@ -45,8 +45,8 @@ func (s *httpServer) Use(handler MiddleWareHandler) {
 	s.filter.Append(handler)
 }
 
-func (s *httpServer) Bind(router Router) {
-	s.router = router
+func (s *httpServer) Bind(routeRegistry RouteRegistry) {
+	s.routeRegistry = routeRegistry
 }
 
 func (s *httpServer) Run() {
