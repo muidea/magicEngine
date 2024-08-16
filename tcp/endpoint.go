@@ -95,7 +95,7 @@ func (s *endpointImpl) RecvData() (err error) {
 			break
 		}
 
-		if s.observer != nil {
+		if s.observer != nil && readSize > 0 {
 			s.observer.OnRecvData(s, buffer[:readSize])
 		}
 	}
