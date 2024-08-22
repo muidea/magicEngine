@@ -77,7 +77,7 @@ func InvokeMiddleWareHandler(handler interface{}, ctx RequestContext, res http.R
 	//	panicInfo("middleware handler must be a callable interface")
 	//}
 
-	handlerMethod, _ := handlerType.MethodByName("Handle")
+	handlerMethod, _ := handlerType.MethodByName("MiddleWareHandle")
 	// 已经验证通过，所以这里就不用继续判断
 	//if !ok {
 	//	panicInfo("middleware handler isn\\'t have Handle func")
