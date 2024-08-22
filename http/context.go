@@ -27,7 +27,7 @@ func ValidateMiddleWareHandler(handler interface{}) {
 		panicInfo("middleware handler must be a callable interface")
 	}
 
-	handlerMethod, ok := handlerType.MethodByName("Handle")
+	handlerMethod, ok := handlerType.MethodByName("MiddleWareHandle")
 	if !ok {
 		panicInfo("middleware handler isn\\'t have Handle func")
 	}
