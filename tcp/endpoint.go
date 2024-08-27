@@ -90,7 +90,7 @@ func (s *endpointImpl) RecvData() (err error) {
 	for {
 		readSize, readErr := reader.Read(buffer)
 		if readErr != nil {
-			log.Errorf("recv data failed")
+			log.Errorf("recv data failed, error:%s", readErr.Error())
 			err = readErr
 			break
 		}
