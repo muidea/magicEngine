@@ -44,15 +44,13 @@ func (s *serverImpl) Run(bindAddr string) (err error) {
 		s.Execute.Run(func() {
 			log.Infof("accept new connect, from:%s", connVal.RemoteAddr().String())
 			if s.observer == nil {
-				connVal.Close()
+				_ = connVal.Close()
 				return
 			}
 
-			endpoint := NewEndpoint(connVal, s.observer, &s.Execute)
+			endpoint := newEndpoint(connVal, s.observer, &s.Execute)
 			defer endpoint.Close()
-			endpoint.RecvData()
+			_ = endpoint.RecvData()
 		})
 	}
-
-	return
 }

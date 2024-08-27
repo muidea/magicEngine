@@ -35,17 +35,17 @@ func (s *clientImpl) Connect(serverAddr string) (err error) {
 		return
 	}
 	if s.observer == nil {
-		connVal.Close()
+		_ = connVal.Close()
 		return
 	}
 
-	implPtr := NewEndpoint(connVal, s.observer, &s.Execute)
+	implPtr := newEndpoint(connVal, s.observer, &s.Execute)
 	s.endpoint = implPtr
 
 	s.Execute.Run(func() {
 		log.Infof("connect remote server %s ok", serverAddr)
 		defer implPtr.Close()
-		implPtr.RecvData()
+		_ = implPtr.RecvData()
 	})
 
 	return

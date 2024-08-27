@@ -21,7 +21,7 @@ type Observer interface {
 	OnRecvData(ep Endpoint, data []byte)
 }
 
-func NewEndpoint(conn net.Conn, ob Observer, executePtr *execute.Execute) *endpointImpl {
+func newEndpoint(conn net.Conn, ob Observer, executePtr *execute.Execute) *endpointImpl {
 	ptr := &endpointImpl{
 		connVal:    conn,
 		observer:   ob,
