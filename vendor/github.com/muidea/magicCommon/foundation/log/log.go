@@ -1,10 +1,11 @@
 package log
 
 import (
+	"encoding/xml"
 	"os"
 	"strconv"
 
-	log "github.com/cihub/seelog"
+	log "github.com/muidea/seelog"
 )
 
 const (
@@ -19,9 +20,22 @@ const (
 )
 
 func init() {
-	logger, _ := log.LoggerFromConfigAsBytes([]byte(logConfig))
-	logger.SetAdditionalStackDepth(1)
-	log.ReplaceLogger(logger)
+	var err error
+	logger, err := log.LoggerFromConfigAsBytes([]byte(logConfig))
+	if err != nil {
+		logger.Criticalf("Failed to initialize logger: %v", err)
+		os.Exit(1)
+	}
+
+	if err := validateLogConfig(logConfig); err != nil {
+		logger.Criticalf("Invalid log configuration: %v", err)
+		os.Exit(1)
+	}
+
+	defer func() {
+		logger.SetAdditionalStackDepth(1)
+		log.ReplaceLogger(logger)
+	}()
 
 	levelVal, ok := os.LookupEnv("LOG_LEVEL")
 	if !ok {
@@ -32,18 +46,29 @@ func init() {
 	iVal, iErr := strconv.Atoi(levelVal)
 	if iErr != nil {
 		logLevel = levelTrace
+		logger.Warnf("Invalid LOG_LEVEL value '%s', defaulting to trace level", levelVal)
 		return
 	}
 	if iVal < levelTrace {
 		logLevel = levelAll
+		logger.Warnf("LOG_LEVEL value '%d' is too low, defaulting to all levels", iVal)
 		return
 	}
 	if iVal > levelCritical {
 		logLevel = levelNone
+		logger.Warnf("LOG_LEVEL value '%d' is too high, defaulting to none level", iVal)
 		return
 	}
 
 	logLevel = iVal
+}
+
+func validateLogConfig(config string) error {
+	var xmlConfig struct{}
+	if err := xml.Unmarshal([]byte(config), &xmlConfig); err != nil {
+		return err
+	}
+	return nil
 }
 
 var logLevel int
