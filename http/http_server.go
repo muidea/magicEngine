@@ -35,7 +35,7 @@ func NewHTTPServer(bindPort string) HTTPServer {
 }
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	valueContext := context.WithValue(context.Background(), systemStatic, s.staticOptions)
+	valueContext := context.WithValue(context.Background(), systemStatic{}, s.staticOptions)
 	ctx := NewRequestContext(s.filter.GetHandlers(), s.routeRegistry, valueContext, res, req)
 
 	ctx.Run()
@@ -50,8 +50,7 @@ func (s *httpServer) Bind(routeRegistry RouteRegistry) {
 }
 
 func (s *httpServer) Run() {
-	traceInfo("listening on " + s.listenAddr)
-
+	log.Infof("listening on %s", s.listenAddr)
 	err := http.ListenAndServe(s.listenAddr, s)
 	log.Criticalf("run httpserver fatal, err:%s", err.Error())
 }

@@ -56,7 +56,7 @@ type static struct {
 // Static returns a middleware handler that serves static files in the given directory.
 func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
-	staticObj := ctx.Context().Value(systemStatic)
+	staticObj := ctx.Context().Value(systemStatic{})
 	if staticObj == nil {
 		panicInfo("cant\\'t get static handler")
 	}
