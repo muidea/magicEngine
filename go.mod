@@ -2,7 +2,7 @@ module github.com/muidea/magicEngine
 
 go 1.22
 
-require github.com/muidea/magicCommon v1.3.119
+require github.com/muidea/magicCommon v1.3.120
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.6 // indirect
