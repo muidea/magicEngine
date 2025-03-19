@@ -1,6 +1,6 @@
 module github.com/muidea/magicEngine
 
-go 1.22
+go 1.23
 
 require github.com/muidea/magicCommon v1.3.122
 
