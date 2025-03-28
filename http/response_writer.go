@@ -13,11 +13,7 @@ type ResponseWriter interface {
 }
 
 func NewResponseWriter(rw http.ResponseWriter) ResponseWriter {
-	newRw := responseWriter{rw, 0, 0}
-	if cn, ok := rw.(http.CloseNotifier); ok {
-		return &closeNotifyResponseWriter{newRw, cn}
-	}
-	return &newRw
+	return &responseWriter{rw, 0, 0}
 }
 
 type responseWriter struct {
@@ -64,11 +60,6 @@ func (rw *responseWriter) Written() bool {
 	return rw.status != 0
 }
 
-type closeNotifyResponseWriter struct {
-	responseWriter
-	closeNotifier http.CloseNotifier
-}
-
-func (rw *closeNotifyResponseWriter) CloseNotify() <-chan bool {
-	return rw.closeNotifier.CloseNotify()
+func (rw *responseWriter) Flush() {
+	rw.ResponseWriter.(http.Flusher).Flush()
 }
