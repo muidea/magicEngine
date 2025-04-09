@@ -11,7 +11,7 @@ func main() {
 
 	http2.Append(router)
 
-	svr := http.NewHTTPServer("8010")
+	svr := http.NewHTTPServer("8010", false)
 	svr.Bind(router)
 
 	svr.Use(&http2.MiddleWareHello{Index: 100})

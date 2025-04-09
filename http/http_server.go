@@ -23,13 +23,16 @@ type httpServer struct {
 }
 
 // NewHTTPServer 新建HTTPServer
-func NewHTTPServer(bindPort string) HTTPServer {
+func NewHTTPServer(bindPort string, enableStatic bool) HTTPServer {
 	listenAddr := fmt.Sprintf(":%s", bindPort)
-	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains(), staticOptions: &StaticOptions{Path: "static", Prefix: "static"}}
+	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains()}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
-	svr.Use(&static{rootPath: Root})
+	if enableStatic {
+		svr.staticOptions = &StaticOptions{Path: "static", Prefix: "static"}
+		svr.Use(&static{rootPath: Root})
+	}
 
 	return svr
 }
