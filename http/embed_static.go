@@ -21,13 +21,15 @@ type EmbedFile struct {
 }
 
 type EmbedStatic struct {
+	embedPath      string
 	prefixPath     string
 	templateFS     embed.FS
 	staticFileInfo sync.Map
 }
 
-func NewEmbedStatic(templateFS embed.FS, prefixPath string) *EmbedStatic {
+func NewEmbedStatic(templateFS embed.FS, embedPath, prefixPath string) *EmbedStatic {
 	return &EmbedStatic{
+		embedPath:      embedPath,
 		prefixPath:     prefixPath,
 		templateFS:     templateFS,
 		staticFileInfo: sync.Map{},
@@ -69,11 +71,11 @@ func (s *EmbedStatic) validatePath(filePath string) (ret string) {
 		filePath = "/"
 	}
 
-	filePath = path.Clean(filePath)
 	if s.isDir(filePath) {
-		filePath += path.Join("/", "index.html")
+		filePath = path.Join(filePath, "index.html")
 	}
-	ret = filePath
+
+	ret = path.Join(s.embedPath, filePath)
 	return
 }
 
