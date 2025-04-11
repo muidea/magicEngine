@@ -38,7 +38,7 @@ func NewHTTPServer(bindPort string, enableStatic bool) HTTPServer {
 }
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	valueContext := context.WithValue(context.Background(), systemStatic{}, s.staticOptions)
+	valueContext := context.WithValue(req.Context(), systemStatic{}, s.staticOptions)
 	ctx := NewRequestContext(s.filter.GetHandlers(), s.routeRegistry, valueContext, res, req)
 
 	ctx.Run()
