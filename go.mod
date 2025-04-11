@@ -1,6 +1,7 @@
 module github.com/muidea/magicEngine
 
 go 1.23
+toolchain go1.24.1
 
 require github.com/muidea/magicCommon v1.3.122
 
@@ -12,10 +13,10 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/muidea/seelog v1.0.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/net v0.30.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 )
 
 replace github.com/muidea/magicCommon => ../magicCommon
