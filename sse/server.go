@@ -18,35 +18,40 @@ func IsSSE(req *http.Request) bool {
 }
 
 type Holder struct {
-	httpResponse http.ResponseWriter
-	lastActive   time.Time
-	mu           sync.Mutex
+	httpResponseWriter http.ResponseWriter
+	httpRequest        *http.Request
+	lastActive         time.Time
+	mu                 sync.Mutex
 }
 
-func (s *Holder) Sink(event string, data []byte) (err error) {
+func (s *Holder) OnRecv(event string, data []byte) (err error) {
 	s.mu.Lock()
 	s.lastActive = time.Now()
 	s.mu.Unlock()
 
-	s.httpResponse.Header().Add("Content-Type", "text/event-stream")
+	s.httpResponseWriter.Header().Add("Content-Type", "text/event-stream")
 	if event != "" {
-		_, err = s.httpResponse.Write([]byte("event: " + event + "\n"))
+		_, err = s.httpResponseWriter.Write([]byte("event: " + event + "\n"))
 		if err != nil {
 			log.Errorf("write event failed, err:%s", err)
 			return
 		}
 	}
-	_, err = s.httpResponse.Write([]byte("data: " + string(data) + "\n"))
+	_, err = s.httpResponseWriter.Write([]byte("data: " + string(data) + "\n"))
 	if err != nil {
 		log.Errorf("write data failed, err:%s", err)
 		return
 	}
 
-	flusherVal, flusherOK := s.httpResponse.(http.Flusher)
+	flusherVal, flusherOK := s.httpResponseWriter.(http.Flusher)
 	if flusherOK {
 		flusherVal.Flush()
 	}
 	return
+}
+
+func (s *Holder) OnClose() {
+
 }
 
 func (s *Holder) heartbeat() (err error) {
@@ -54,14 +59,14 @@ func (s *Holder) heartbeat() (err error) {
 	s.lastActive = time.Now()
 	s.mu.Unlock()
 
-	s.httpResponse.Header().Add("Content-Type", "text/event-stream")
-	_, err = s.httpResponse.Write([]byte(": ping\n"))
+	s.httpResponseWriter.Header().Add("Content-Type", "text/event-stream")
+	_, err = s.httpResponseWriter.Write([]byte(": ping\n"))
 	if err != nil {
 		log.Errorf("write heartbeat failed, err:%s", err)
 		return
 	}
 
-	flusherVal, flusherOK := s.httpResponse.(http.Flusher)
+	flusherVal, flusherOK := s.httpResponseWriter.(http.Flusher)
 	if flusherOK {
 		flusherVal.Flush()
 	}
@@ -113,8 +118,9 @@ func (s *Holder) Run(taskFunc func() error) error {
 	return nil
 }
 
-func NewHolder(response http.ResponseWriter) *Holder {
+func NewHolder(res http.ResponseWriter, req *http.Request) *Holder {
 	return &Holder{
-		httpResponse: response,
+		httpResponseWriter: res,
+		httpRequest:        req,
 	}
 }

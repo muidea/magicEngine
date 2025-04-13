@@ -16,7 +16,8 @@ import (
 )
 
 type Sinker interface {
-	Sink(event string, data []byte) error
+	OnClose()
+	OnRecv(event string, data []byte) error
 }
 
 type Client struct {
@@ -25,7 +26,8 @@ type Client struct {
 	retryWait   time.Duration
 	lastEventID string
 	mu          sync.Mutex
-	sink        Sinker
+
+	cancelFunc context.CancelFunc
 }
 
 type Event struct {
@@ -35,27 +37,54 @@ type Event struct {
 	Retry time.Duration
 }
 
-func NewClient(uri string, retryWait time.Duration, maxRetries int, sink Sinker) *Client {
+func NewClient(uri string, retryWait time.Duration, maxRetries int) *Client {
 	return &Client{
 		serverURI:  uri,
 		maxRetries: maxRetries,
-		sink:       sink,
 	}
 }
 
-func (s *Client) Get(ctx context.Context, header url.Values) error {
+func (s *Client) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.cancelFunc != nil {
+		s.cancelFunc()
+	}
+}
+
+func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
 		return urlErr
 	}
 
-	actionFunc := func() error {
-		requestVal, requestErr := http.NewRequest(http.MethodGet, urlVal.String(), nil)
+	actionFunc := func() (err error) {
+		clientCtx, clientCancel := context.WithCancel(context.Background())
+		defer func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if err != nil {
+				clientCancel()
+				s.cancelFunc = nil
+			}
+		}()
+
+		func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+
+			s.cancelFunc = clientCancel
+		}()
+
+		requestVal, requestErr := http.NewRequestWithContext(clientCtx, http.MethodGet, urlVal.String(), nil)
 		if requestErr != nil {
-			log.Errorf("new request failed, err:%s", requestErr)
-			return requestErr
+			err = requestErr
+			log.Errorf("new request failed, err:%s", err)
+			return
 		}
+
 		for k, v := range header {
 			requestVal.Header.Set(k, v[0])
 		}
@@ -66,16 +95,19 @@ func (s *Client) Get(ctx context.Context, header url.Values) error {
 		}
 		responseVal, responseErr := http.DefaultClient.Do(requestVal)
 		if responseErr != nil {
-			log.Errorf("do request failed, err:%s", responseErr)
-			return responseErr
+			err = responseErr
+			log.Errorf("do request failed, err:%s", err)
+			return
 		}
 		defer responseVal.Body.Close()
 
 		if responseVal.StatusCode != http.StatusOK {
-			return fmt.Errorf("request failed, status:%d", responseVal.StatusCode)
+			err = fmt.Errorf("request failed, status:%d", responseVal.StatusCode)
+			return
 		}
 
-		return s.recvVal(ctx, responseVal)
+		err = s.recvVal(clientCtx, responseVal, sink)
+		return
 	}
 
 	var retryCount int
@@ -89,6 +121,8 @@ func (s *Client) Get(ctx context.Context, header url.Values) error {
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
+					sink.OnClose()
+
 					return retryErr
 				}
 
@@ -102,7 +136,7 @@ func (s *Client) Get(ctx context.Context, header url.Values) error {
 	}
 }
 
-func (s *Client) Post(ctx context.Context, param any, header url.Values) error {
+func (s *Client) Post(ctx context.Context, param any, header url.Values, sink Sinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
@@ -118,16 +152,34 @@ func (s *Client) Post(ctx context.Context, param any, header url.Values) error {
 		}
 	}
 
-	actionFunc := func() error {
+	actionFunc := func() (err error) {
+		clientCtx, clientCancel := context.WithCancel(context.Background())
+		defer func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if err != nil {
+				clientCancel()
+				s.cancelFunc = nil
+			}
+		}()
+
+		func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+
+			s.cancelFunc = clientCancel
+		}()
+
 		byteBuff := bytes.NewBuffer(nil)
 		if byteVal != nil {
 			byteBuff.Write(byteVal)
 		}
 
-		requestVal, requestErr := http.NewRequest(http.MethodPost, urlVal.String(), byteBuff)
+		requestVal, requestErr := http.NewRequestWithContext(clientCtx, http.MethodPost, urlVal.String(), byteBuff)
 		if requestErr != nil {
-			log.Errorf("new request failed, err:%s", requestErr)
-			return requestErr
+			err = requestErr
+			log.Errorf("new request failed, err:%s", err)
+			return
 		}
 		for k, v := range header {
 			requestVal.Header.Set(k, v[0])
@@ -139,21 +191,26 @@ func (s *Client) Post(ctx context.Context, param any, header url.Values) error {
 		}
 		responseVal, responseErr := http.DefaultClient.Do(requestVal)
 		if responseErr != nil {
-			log.Errorf("do request failed, err:%s", responseErr)
-			return responseErr
+			err = responseErr
+			log.Errorf("do request failed, err:%s", err)
+			return
 		}
 		defer responseVal.Body.Close()
 
 		if responseVal.StatusCode != http.StatusOK {
 			contentVal, contentErr := io.ReadAll(responseVal.Body)
 			if contentErr != nil {
-				log.Errorf("read content failed, err:%s", contentErr)
-				return contentErr
+				err = contentErr
+				log.Errorf("read content failed, err:%s", err)
+				return
 			}
-			return fmt.Errorf("request failed, status:%d, message:%s", responseVal.StatusCode, string(contentVal))
+
+			err = fmt.Errorf("request failed, status:%d, message:%s", responseVal.StatusCode, string(contentVal))
+			return
 		}
 
-		return s.recvVal(ctx, responseVal)
+		err = s.recvVal(ctx, responseVal, sink)
+		return
 	}
 
 	var retryCount int
@@ -168,6 +225,7 @@ func (s *Client) Post(ctx context.Context, param any, header url.Values) error {
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
+					sink.OnClose()
 					return retryErr
 				}
 
@@ -204,7 +262,7 @@ func (s *Client) Head() {
 TODO 目前不确定Server在回Event时会不会不同类型的Event混着发送
 // 当前的逻辑按照不会处理。后续需要确认
 */
-func (s *Client) recvVal(ctx context.Context, resp *http.Response) (err error) {
+func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink Sinker) (err error) {
 	reader := bufio.NewReader(resp.Body)
 	var currentEvent Event
 
@@ -215,9 +273,6 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response) (err error) {
 		default:
 			byteVal, byteErr := reader.ReadBytes('\n')
 			if byteErr != nil {
-				if byteErr != io.EOF {
-					log.Errorf("read body failed, err:%s", byteErr)
-				}
 				return
 			}
 
@@ -228,7 +283,7 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response) (err error) {
 					s.mu.Lock()
 					s.lastEventID = currentEvent.ID
 					s.mu.Unlock()
-					s.sink.Sink(currentEvent.Name, currentEvent.Data)
+					sink.OnRecv(currentEvent.Name, currentEvent.Data)
 				}
 				currentEvent = Event{}
 				continue
