@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -136,20 +135,11 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 	}
 }
 
-func (s *Client) Post(ctx context.Context, param any, header url.Values, sink Sinker) error {
+func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, sink Sinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
 		return urlErr
-	}
-	var byteVal []byte
-	var byteErr error
-	if param != nil {
-		byteVal, byteErr = json.Marshal(param)
-		if byteErr != nil {
-			log.Errorf("marshal param failed, err:%s", byteErr.Error())
-			return byteErr
-		}
 	}
 
 	actionFunc := func() (err error) {
