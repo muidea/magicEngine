@@ -122,7 +122,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 					log.Errorf("handle retry failed, err:%s", retryErr)
 					sink.OnClose()
 
-					return retryErr
+					return err
 				}
 
 				retryCount = retryVal + 1
@@ -216,7 +216,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
 					sink.OnClose()
-					return retryErr
+					return err
 				}
 
 				retryCount = retryVal + 1
