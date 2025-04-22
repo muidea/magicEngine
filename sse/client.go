@@ -26,6 +26,7 @@ type Client struct {
 	lastEventID string
 	mu          sync.Mutex
 
+	sseID      string
 	cancelFunc context.CancelFunc
 }
 
@@ -89,6 +90,9 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 		}
 		requestVal.Header.Set("Accept", "text/event-stream")
 		requestVal.Header.Set("Cache-Control", "no-cache")
+		if s.sseID != "" {
+			requestVal.Header.Set(sseID, s.sseID)
+		}
 		if s.lastEventID != "" {
 			requestVal.Header.Set("Last-Event-ID", s.lastEventID)
 		}
@@ -280,6 +284,8 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink Sinker) 
 			}
 
 			switch {
+			case bytes.HasPrefix(byteVal, []byte("sseID:")):
+				s.sseID = string(bytes.TrimPrefix(byteVal, []byte("sseID:")))
 			case bytes.HasPrefix(byteVal, []byte("event:")):
 				currentEvent.Name = string(bytes.TrimPrefix(byteVal, []byte("event:")))
 			case bytes.HasPrefix(byteVal, []byte("id:")):
