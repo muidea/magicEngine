@@ -15,8 +15,8 @@ import (
 )
 
 type Sinker interface {
-	OnClose()
-	OnRecv(event string, data []byte) error
+	OnClose(id string)
+	OnRecv(id, event string, data []byte) error
 }
 
 type Client struct {
@@ -42,6 +42,10 @@ func NewClient(uri string, retryWait time.Duration, maxRetries int) *Client {
 		serverURI:  uri,
 		maxRetries: maxRetries,
 	}
+}
+
+func (s *Client) ID() string {
+	return s.sseID
 }
 
 func (s *Client) Close() {
@@ -88,7 +92,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 		for k, v := range header {
 			requestVal.Header.Set(k, v[0])
 		}
-		requestVal.Header.Set("Accept", "text/event-stream")
+		requestVal.Header.Set("Accept", sseStream)
 		requestVal.Header.Set("Cache-Control", "no-cache")
 		if s.sseID != "" {
 			requestVal.Header.Set(sseID, s.sseID)
@@ -124,7 +128,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
-					sink.OnClose()
+					sink.OnClose(s.sseID)
 
 					return err
 				}
@@ -178,7 +182,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 		for k, v := range header {
 			requestVal.Header.Set(k, v[0])
 		}
-		requestVal.Header.Set("Accept", "text/event-stream")
+		requestVal.Header.Set("Accept", sseStream)
 		requestVal.Header.Set("Cache-Control", "no-cache")
 		if s.lastEventID != "" {
 			requestVal.Header.Set("Last-Event-ID", s.lastEventID)
@@ -219,7 +223,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
-					sink.OnClose()
+					sink.OnClose(s.sseID)
 					return err
 				}
 
@@ -277,7 +281,7 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink Sinker) 
 					s.mu.Lock()
 					s.lastEventID = currentEvent.ID
 					s.mu.Unlock()
-					sink.OnRecv(currentEvent.Name, currentEvent.Data)
+					sink.OnRecv(s.sseID, currentEvent.Name, currentEvent.Data)
 				}
 				currentEvent = Event{}
 				continue

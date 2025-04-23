@@ -24,10 +24,6 @@ func IsSSE(req *http.Request) bool {
 	return req.Header.Get("Accept") == sseStream
 }
 
-type Observer interface {
-	OnClose(id string)
-}
-
 type Holder struct {
 	httpResponseWriter http.ResponseWriter
 	httpRequest        *http.Request
@@ -35,11 +31,11 @@ type Holder struct {
 	mu                 *sync.Mutex
 
 	sseID      string
-	observer   Observer
+	sinker     Sinker
 	masterFlag bool
 }
 
-func (s *Holder) OnRecv(event string, data []byte) (err error) {
+func (s *Holder) OnRecv(id, event string, data []byte) (err error) {
 	s.mu.Lock()
 	s.lastActive = time.Now()
 	s.mu.Unlock()
@@ -65,9 +61,9 @@ func (s *Holder) OnRecv(event string, data []byte) (err error) {
 	return
 }
 
-func (s *Holder) OnClose() {
-	if s.observer != nil {
-		s.observer.OnClose(s.sseID)
+func (s *Holder) OnClose(id string) {
+	if s.sinker != nil {
+		s.sinker.OnClose(s.sseID)
 	}
 }
 
@@ -181,6 +177,7 @@ func NewHolder(res http.ResponseWriter, req *http.Request) *Holder {
 		httpResponseWriter: res,
 		httpRequest:        req,
 		masterFlag:         false,
+		sseID:              pu.RandomAlphanumeric(32),
 	}
 }
 
@@ -198,8 +195,7 @@ func CreateHolderRegistry() *HolderRegistry {
 func (s *HolderRegistry) NewHolder(res http.ResponseWriter, req *http.Request) *Holder {
 	holder := NewHolder(res, req)
 	holder.mu = &s.mu
-	holder.sseID = pu.RandomAlphanumeric(32)
-	holder.observer = s
+	holder.sinker = s
 
 	s.holderMap.Store(holder.sseID, holder)
 	return holder
@@ -222,4 +218,8 @@ func (s *HolderRegistry) GetHolder(res http.ResponseWriter, req *http.Request) *
 
 func (s *HolderRegistry) OnClose(id string) {
 	s.holderMap.Delete(id)
+}
+
+func (s *HolderRegistry) OnRecv(id string, event string, data []byte) error {
+	return nil
 }
