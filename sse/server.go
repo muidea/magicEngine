@@ -28,7 +28,7 @@ type Holder struct {
 	httpResponseWriter http.ResponseWriter
 	httpRequest        *http.Request
 	lastActive         time.Time
-	mu                 *sync.Mutex
+	muPtr              *sync.Mutex
 
 	sseID      string
 	sinker     Sinker
@@ -36,9 +36,9 @@ type Holder struct {
 }
 
 func (s *Holder) OnRecv(id, event string, data []byte) (err error) {
-	s.mu.Lock()
+	s.muPtr.Lock()
 	s.lastActive = time.Now()
-	s.mu.Unlock()
+	s.muPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	if event != "" {
@@ -68,9 +68,9 @@ func (s *Holder) OnClose(id string) {
 }
 
 func (s *Holder) heartbeat() (err error) {
-	s.mu.Lock()
+	s.muPtr.Lock()
 	s.lastActive = time.Now()
-	s.mu.Unlock()
+	s.muPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	_, err = s.httpResponseWriter.Write([]byte(": ping\n"))
@@ -87,9 +87,13 @@ func (s *Holder) heartbeat() (err error) {
 }
 
 func (s *Holder) echoSSEID() {
-	s.mu.Lock()
+	if s.muPtr == nil {
+		return
+	}
+
+	s.muPtr.Lock()
 	s.lastActive = time.Now()
-	s.mu.Unlock()
+	s.muPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	_, err := s.httpResponseWriter.Write(fmt.Appendf(nil, "sseID: %s\n", s.sseID))
@@ -105,26 +109,28 @@ func (s *Holder) echoSSEID() {
 }
 
 func (s *Holder) Run(taskFunc func() error) error {
-	// 这里主动进行限制，已有一个Master，在进行心跳检测
-	var curMasterFlag bool
-	func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		curMasterFlag = s.masterFlag
-	}()
-	if curMasterFlag {
-		if taskFunc == nil {
-			return nil
+	if s.muPtr != nil {
+		// 这里主动进行限制，已有一个Master，在进行心跳检测
+		var curMasterFlag bool
+		func() {
+			s.muPtr.Lock()
+			defer s.muPtr.Unlock()
+			curMasterFlag = s.masterFlag
+		}()
+		if curMasterFlag {
+			if taskFunc == nil {
+				return nil
+			}
+
+			return taskFunc()
 		}
 
-		return taskFunc()
+		func() {
+			s.muPtr.Lock()
+			defer s.muPtr.Unlock()
+			s.masterFlag = true
+		}()
 	}
-
-	func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.masterFlag = true
-	}()
 
 	wg := &sync.WaitGroup{}
 
@@ -153,9 +159,9 @@ func (s *Holder) Run(taskFunc func() error) error {
 		for {
 			select {
 			case <-ticker.C:
-				s.mu.Lock()
+				s.muPtr.Lock()
 				lastActive := s.lastActive // 获取最后活动时间副本
-				s.mu.Unlock()
+				s.muPtr.Unlock()
 
 				if time.Since(lastActive) > timerTimeout {
 					s.heartbeat()
@@ -177,6 +183,7 @@ func NewHolder(res http.ResponseWriter, req *http.Request) *Holder {
 		httpResponseWriter: res,
 		httpRequest:        req,
 		masterFlag:         false,
+		muPtr:              &sync.Mutex{},
 		sseID:              pu.RandomAlphanumeric(32),
 	}
 }
@@ -193,9 +200,14 @@ func CreateHolderRegistry() *HolderRegistry {
 }
 
 func (s *HolderRegistry) NewHolder(res http.ResponseWriter, req *http.Request) *Holder {
-	holder := NewHolder(res, req)
-	holder.mu = &s.mu
-	holder.sinker = s
+	holder := &Holder{
+		httpResponseWriter: res,
+		httpRequest:        req,
+		masterFlag:         false,
+		muPtr:              &s.mu,
+		sseID:              pu.RandomAlphanumeric(32),
+		sinker:             s,
+	}
 
 	s.holderMap.Store(holder.sseID, holder)
 	return holder
