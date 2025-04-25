@@ -86,9 +86,9 @@ func (s *Holder) heartbeat() (err error) {
 	return
 }
 
-func (s *Holder) echoSSEID() {
+func (s *Holder) EchoSSEID() error {
 	if s.muPtr == nil {
-		return
+		return nil
 	}
 
 	s.muPtr.Lock()
@@ -99,38 +99,38 @@ func (s *Holder) echoSSEID() {
 	_, err := s.httpResponseWriter.Write(fmt.Appendf(nil, "event: sseID\ndata: %s\n\n", s.sseID))
 	if err != nil {
 		log.Errorf("write heartbeat failed, err:%s", err)
-		return
+		return err
 	}
 
 	flusherVal, flusherOK := s.httpResponseWriter.(http.Flusher)
 	if flusherOK {
 		flusherVal.Flush()
 	}
+
+	return nil
 }
 
 func (s *Holder) Run(taskFunc func() error) error {
-	if s.muPtr != nil {
-		// 这里主动进行限制，已有一个Master，在进行心跳检测
-		var curMasterFlag bool
-		func() {
-			s.muPtr.Lock()
-			defer s.muPtr.Unlock()
-			curMasterFlag = s.masterFlag
-		}()
-		if curMasterFlag {
-			if taskFunc == nil {
-				return nil
-			}
-
-			return taskFunc()
+	// 这里主动进行限制，已有一个Master，在进行心跳检测
+	var curMasterFlag bool
+	func() {
+		s.muPtr.Lock()
+		defer s.muPtr.Unlock()
+		curMasterFlag = s.masterFlag
+	}()
+	if curMasterFlag {
+		if taskFunc == nil {
+			return nil
 		}
 
-		func() {
-			s.muPtr.Lock()
-			defer s.muPtr.Unlock()
-			s.masterFlag = true
-		}()
+		return taskFunc()
 	}
+
+	func() {
+		s.muPtr.Lock()
+		defer s.muPtr.Unlock()
+		s.masterFlag = true
+	}()
 
 	wg := &sync.WaitGroup{}
 
@@ -141,8 +141,6 @@ func (s *Holder) Run(taskFunc func() error) error {
 		defer func() {
 			taskOK = true
 		}()
-
-		s.echoSSEID()
 
 		err := taskFunc()
 		if err != nil {
