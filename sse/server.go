@@ -96,7 +96,7 @@ func (s *Holder) echoSSEID() {
 	s.muPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
-	_, err := s.httpResponseWriter.Write(fmt.Appendf(nil, "sseID: %s\n", s.sseID))
+	_, err := s.httpResponseWriter.Write(fmt.Appendf(nil, "event: sseID\ndata: %s\n\n", s.sseID))
 	if err != nil {
 		log.Errorf("write heartbeat failed, err:%s", err)
 		return
