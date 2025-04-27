@@ -14,9 +14,9 @@ import (
 	"github.com/muidea/magicCommon/foundation/log"
 )
 
-type Sinker interface {
-	OnClose(id string)
-	OnRecv(id, event string, data []byte) error
+type ClientSinker interface {
+	OnClose()
+	OnRecv(event string, data []byte)
 }
 
 type Client struct {
@@ -24,9 +24,8 @@ type Client struct {
 	maxRetries  int
 	retryWait   time.Duration
 	lastEventID string
-	mu          sync.Mutex
+	syncMutex   sync.Mutex
 
-	sseID      string
 	cancelFunc context.CancelFunc
 }
 
@@ -44,20 +43,16 @@ func NewClient(uri string, retryWait time.Duration, maxRetries int) *Client {
 	}
 }
 
-func (s *Client) ID() string {
-	return s.sseID
-}
-
 func (s *Client) Close() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.syncMutex.Lock()
+	defer s.syncMutex.Unlock()
 
 	if s.cancelFunc != nil {
 		s.cancelFunc()
 	}
 }
 
-func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error {
+func (s *Client) Get(ctx context.Context, header url.Values, sink ClientSinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
@@ -67,8 +62,8 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 	actionFunc := func() (err error) {
 		clientCtx, clientCancel := context.WithCancel(context.Background())
 		defer func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
+			s.syncMutex.Lock()
+			defer s.syncMutex.Unlock()
 			if err != nil {
 				clientCancel()
 				s.cancelFunc = nil
@@ -76,8 +71,8 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 		}()
 
 		func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
+			s.syncMutex.Lock()
+			defer s.syncMutex.Unlock()
 
 			s.cancelFunc = clientCancel
 		}()
@@ -94,9 +89,6 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 		}
 		requestVal.Header.Set("Accept", sseStream)
 		requestVal.Header.Set("Cache-Control", "no-cache")
-		if s.sseID != "" {
-			requestVal.Header.Set(sseID, s.sseID)
-		}
 		if s.lastEventID != "" {
 			requestVal.Header.Set("Last-Event-ID", s.lastEventID)
 		}
@@ -128,7 +120,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
-					sink.OnClose(s.sseID)
+					sink.OnClose()
 
 					return err
 				}
@@ -143,7 +135,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink Sinker) error 
 	}
 }
 
-func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, sink Sinker) error {
+func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, sink ClientSinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
@@ -153,8 +145,8 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 	actionFunc := func() (err error) {
 		clientCtx, clientCancel := context.WithCancel(context.Background())
 		defer func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
+			s.syncMutex.Lock()
+			defer s.syncMutex.Unlock()
 			if err != nil {
 				clientCancel()
 				s.cancelFunc = nil
@@ -162,8 +154,8 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 		}()
 
 		func() {
-			s.mu.Lock()
-			defer s.mu.Unlock()
+			s.syncMutex.Lock()
+			defer s.syncMutex.Unlock()
 
 			s.cancelFunc = clientCancel
 		}()
@@ -223,7 +215,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
-					sink.OnClose(s.sseID)
+					sink.OnClose()
 					return err
 				}
 
@@ -260,7 +252,7 @@ func (s *Client) Head() {
 TODO 目前不确定Server在回Event时会不会不同类型的Event混着发送
 // 当前的逻辑按照不会处理。后续需要确认
 */
-func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink Sinker) (err error) {
+func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink ClientSinker) (err error) {
 	reader := bufio.NewReader(resp.Body)
 	var currentEvent Event
 
@@ -278,18 +270,16 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink Sinker) 
 			if len(byteVal) == 0 {
 				// 空行表示事件结束
 				if currentEvent.Data != nil {
-					s.mu.Lock()
+					s.syncMutex.Lock()
 					s.lastEventID = currentEvent.ID
-					s.mu.Unlock()
-					sink.OnRecv(s.sseID, currentEvent.Name, currentEvent.Data)
+					s.syncMutex.Unlock()
+					sink.OnRecv(currentEvent.Name, currentEvent.Data)
 				}
 				currentEvent = Event{}
 				continue
 			}
 
 			switch {
-			case bytes.HasPrefix(byteVal, []byte("sseID:")):
-				s.sseID = string(bytes.TrimPrefix(byteVal, []byte("sseID:")))
 			case bytes.HasPrefix(byteVal, []byte("event:")):
 				currentEvent.Name = string(bytes.TrimPrefix(byteVal, []byte("event:")))
 			case bytes.HasPrefix(byteVal, []byte("id:")):

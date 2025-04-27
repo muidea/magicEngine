@@ -24,21 +24,35 @@ func IsSSE(req *http.Request) bool {
 	return req.Header.Get("Accept") == sseStream
 }
 
+type holderSinker interface {
+	OnClose(id string)
+}
+
+type Writer interface {
+	SendData(event string, data []byte)
+}
+
 type Holder struct {
 	httpResponseWriter http.ResponseWriter
 	httpRequest        *http.Request
 	lastActive         time.Time
-	muPtr              *sync.Mutex
+	syncMutexPtr       *sync.Mutex
 
 	sseID      string
-	sinker     Sinker
+	sinker     holderSinker
 	masterFlag bool
 }
 
-func (s *Holder) OnRecv(id, event string, data []byte) (err error) {
-	s.muPtr.Lock()
+func (s *Holder) SendData(event string, data []byte) {
+	var err error
+	defer func() {
+		if err != nil && s.sinker != nil {
+			s.sinker.OnClose(s.sseID)
+		}
+	}()
+	s.syncMutexPtr.Lock()
 	s.lastActive = time.Now()
-	s.muPtr.Unlock()
+	s.syncMutexPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	if event != "" {
@@ -58,19 +72,18 @@ func (s *Holder) OnRecv(id, event string, data []byte) (err error) {
 	if flusherOK {
 		flusherVal.Flush()
 	}
-	return
-}
-
-func (s *Holder) OnClose(id string) {
-	if s.sinker != nil {
-		s.sinker.OnClose(s.sseID)
-	}
 }
 
 func (s *Holder) heartbeat() (err error) {
-	s.muPtr.Lock()
+	defer func() {
+		if err != nil && s.sinker != nil {
+			s.sinker.OnClose(s.sseID)
+		}
+	}()
+
+	s.syncMutexPtr.Lock()
 	s.lastActive = time.Now()
-	s.muPtr.Unlock()
+	s.syncMutexPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	_, err = s.httpResponseWriter.Write([]byte(": ping\n"))
@@ -86,20 +99,26 @@ func (s *Holder) heartbeat() (err error) {
 	return
 }
 
-func (s *Holder) EchoSSEID() error {
-	if s.muPtr == nil {
-		return nil
+func (s *Holder) EchoSSEID() (err error) {
+	defer func() {
+		if err != nil && s.sinker != nil {
+			s.sinker.OnClose(s.sseID)
+		}
+	}()
+
+	if s.syncMutexPtr == nil {
+		return
 	}
 
-	s.muPtr.Lock()
+	s.syncMutexPtr.Lock()
 	s.lastActive = time.Now()
-	s.muPtr.Unlock()
+	s.syncMutexPtr.Unlock()
 
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
-	_, err := s.httpResponseWriter.Write(fmt.Appendf(nil, "event: sseID\ndata: %s\n\n", s.sseID))
+	_, err = s.httpResponseWriter.Write(fmt.Appendf(nil, "event: sseID\ndata: %s\n\n", s.sseID))
 	if err != nil {
 		log.Errorf("write heartbeat failed, err:%s", err)
-		return err
+		return
 	}
 
 	flusherVal, flusherOK := s.httpResponseWriter.(http.Flusher)
@@ -107,15 +126,15 @@ func (s *Holder) EchoSSEID() error {
 		flusherVal.Flush()
 	}
 
-	return nil
+	return
 }
 
 func (s *Holder) Run(taskFunc func() error) error {
 	// 这里主动进行限制，已有一个Master，在进行心跳检测
 	var curMasterFlag bool
 	func() {
-		s.muPtr.Lock()
-		defer s.muPtr.Unlock()
+		s.syncMutexPtr.Lock()
+		defer s.syncMutexPtr.Unlock()
 		curMasterFlag = s.masterFlag
 	}()
 	if curMasterFlag {
@@ -127,8 +146,8 @@ func (s *Holder) Run(taskFunc func() error) error {
 	}
 
 	func() {
-		s.muPtr.Lock()
-		defer s.muPtr.Unlock()
+		s.syncMutexPtr.Lock()
+		defer s.syncMutexPtr.Unlock()
 		s.masterFlag = true
 	}()
 
@@ -157,9 +176,9 @@ func (s *Holder) Run(taskFunc func() error) error {
 		for {
 			select {
 			case <-ticker.C:
-				s.muPtr.Lock()
+				s.syncMutexPtr.Lock()
 				lastActive := s.lastActive // 获取最后活动时间副本
-				s.muPtr.Unlock()
+				s.syncMutexPtr.Unlock()
 
 				if time.Since(lastActive) > timerTimeout {
 					s.heartbeat()
@@ -181,7 +200,7 @@ func NewHolder(res http.ResponseWriter, req *http.Request) *Holder {
 		httpResponseWriter: res,
 		httpRequest:        req,
 		masterFlag:         false,
-		muPtr:              &sync.Mutex{},
+		syncMutexPtr:       &sync.Mutex{},
 		sseID:              pu.RandomAlphanumeric(32),
 	}
 }
@@ -202,7 +221,7 @@ func (s *HolderRegistry) NewHolder(res http.ResponseWriter, req *http.Request) *
 		httpResponseWriter: res,
 		httpRequest:        req,
 		masterFlag:         false,
-		muPtr:              &s.mu,
+		syncMutexPtr:       &s.mu,
 		sseID:              pu.RandomAlphanumeric(32),
 		sinker:             s,
 	}
@@ -228,8 +247,4 @@ func (s *HolderRegistry) GetHolder(res http.ResponseWriter, req *http.Request) *
 
 func (s *HolderRegistry) OnClose(id string) {
 	s.holderMap.Delete(id)
-}
-
-func (s *HolderRegistry) OnRecv(id string, event string, data []byte) error {
-	return nil
 }
