@@ -24,12 +24,20 @@ func IsSSE(req *http.Request) bool {
 	return req.Header.Get("Accept") == sseStream
 }
 
-type holderSinker interface {
+type holderSink interface {
 	OnClose(id string)
 }
 
-type Writer interface {
-	SendData(event string, data []byte)
+type StreamSink struct {
+}
+
+func (s *StreamSink) String() string {
+	return "StreamSink"
+}
+
+type StreamSinker interface {
+	OnClose()
+	OnRecv(event string, content []byte)
 }
 
 type Holder struct {
@@ -39,11 +47,11 @@ type Holder struct {
 	syncMutexPtr       *sync.Mutex
 
 	sseID      string
-	sinker     holderSinker
+	sinker     holderSink
 	masterFlag bool
 }
 
-func (s *Holder) SendData(event string, data []byte) {
+func (s *Holder) OnRecv(event string, data []byte) {
 	var err error
 	defer func() {
 		if err != nil && s.sinker != nil {
@@ -71,6 +79,12 @@ func (s *Holder) SendData(event string, data []byte) {
 	flusherVal, flusherOK := s.httpResponseWriter.(http.Flusher)
 	if flusherOK {
 		flusherVal.Flush()
+	}
+}
+
+func (s *Holder) OnClose() {
+	if s.sinker != nil {
+		s.sinker.OnClose(s.sseID)
 	}
 }
 

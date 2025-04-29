@@ -14,11 +14,6 @@ import (
 	"github.com/muidea/magicCommon/foundation/log"
 )
 
-type ClientSinker interface {
-	OnClose()
-	OnRecv(event string, data []byte)
-}
-
 type Client struct {
 	serverURI   string
 	maxRetries  int
@@ -52,7 +47,7 @@ func (s *Client) Close() {
 	}
 }
 
-func (s *Client) Get(ctx context.Context, header url.Values, sink ClientSinker) error {
+func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
@@ -135,7 +130,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink ClientSinker) 
 	}
 }
 
-func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, sink ClientSinker) error {
+func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, sink StreamSinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
 		log.Errorf("parse url failed, err:%s", urlErr)
@@ -252,7 +247,7 @@ func (s *Client) Head() {
 TODO 目前不确定Server在回Event时会不会不同类型的Event混着发送
 // 当前的逻辑按照不会处理。后续需要确认
 */
-func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink ClientSinker) (err error) {
+func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink StreamSinker) (err error) {
 	reader := bufio.NewReader(resp.Body)
 	var currentEvent Event
 
