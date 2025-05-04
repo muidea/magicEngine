@@ -206,7 +206,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 		default:
 			var err error
 			if err = actionFunc(); err != nil {
-				log.Errorf("action failed, err:%v", err)
+				log.Errorf("action failed, serverUrl:%s, err:%v", s.serverURI, err)
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
 					log.Errorf("handle retry failed, err:%s", retryErr)
