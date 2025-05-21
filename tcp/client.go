@@ -39,7 +39,7 @@ func (s *clientImpl) Connect(serverAddr string) (err error) {
 		return
 	}
 
-	implPtr := newEndpoint(connVal, s.observer, &s.Execute)
+	implPtr := newEndpoint(connVal, s.observer)
 	s.endpoint = implPtr
 
 	s.Execute.Run(func() {
@@ -79,4 +79,12 @@ func (s *clientImpl) RemoteAddr() net.Addr {
 	}
 
 	return s.endpoint.RemoteAddr()
+}
+
+func (s *clientImpl) String() string {
+	if s.endpoint == nil {
+		return ""
+	}
+
+	return s.endpoint.String()
 }

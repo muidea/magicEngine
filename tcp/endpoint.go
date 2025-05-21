@@ -3,6 +3,7 @@ package tcp
 import (
 	"bufio"
 	"net"
+	"sync"
 
 	"github.com/muidea/magicCommon/execute"
 	"github.com/muidea/magicCommon/foundation/log"
@@ -13,6 +14,7 @@ type Endpoint interface {
 	SendData(data []byte) error
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
+	String() string
 }
 
 type Observer interface {
@@ -21,17 +23,74 @@ type Observer interface {
 	OnRecvData(ep Endpoint, data []byte)
 }
 
-func newEndpoint(conn net.Conn, ob Observer, executePtr *execute.Execute) *endpointImpl {
-	ptr := &endpointImpl{
-		connVal:    conn,
-		observer:   ob,
+type SimpleEndpointManger struct {
+	observer   Observer
+	executePtr *execute.Execute
+
+	endpointMap sync.Map
+}
+
+func NewEndpointManger(observer Observer, executePtr *execute.Execute) *SimpleEndpointManger {
+	ptr := &SimpleEndpointManger{
+		observer:   observer,
 		executePtr: executePtr,
 	}
 
+	return ptr
+}
+
+func (s *SimpleEndpointManger) OnNewConnect(conn net.Conn) {
+	if s.observer == nil {
+		_ = conn.Close()
+		return
+	}
+
+	endpointPtr := newEndpoint(conn, s)
+	defer endpointPtr.Close()
+	_ = endpointPtr.RecvData()
+
+}
+
+func (s *SimpleEndpointManger) OnConnect(ep Endpoint) {
+	if s.observer == nil {
+		return
+	}
+
+	s.endpointMap.Store(ep.String(), ep)
+	s.executePtr.Run(func() {
+		s.observer.OnConnect(ep)
+	})
+}
+
+func (s *SimpleEndpointManger) OnDisConnect(ep Endpoint) {
+	if s.observer == nil {
+		return
+	}
+
+	s.endpointMap.Delete(ep.String())
+	s.executePtr.Run(func() {
+		s.observer.OnDisConnect(ep)
+	})
+}
+
+func (s *SimpleEndpointManger) OnRecvData(ep Endpoint, data []byte) {
+	if s.observer == nil {
+		return
+	}
+
+	s.executePtr.Run(func() {
+		s.observer.OnRecvData(ep, data)
+	})
+}
+
+func newEndpoint(conn net.Conn, ob Observer) *endpointImpl {
+	ptr := &endpointImpl{
+		connVal:  conn,
+		observer: ob,
+	}
+
 	if ob != nil {
-		executePtr.Run(func() {
-			ob.OnConnect(ptr)
-		})
+		ob.OnConnect(ptr)
 	}
 
 	return ptr
@@ -40,9 +99,8 @@ func newEndpoint(conn net.Conn, ob Observer, executePtr *execute.Execute) *endpo
 const buffSize = 1024
 
 type endpointImpl struct {
-	connVal    net.Conn
-	observer   Observer
-	executePtr *execute.Execute
+	connVal  net.Conn
+	observer Observer
 }
 
 func (s *endpointImpl) Close() {
@@ -68,9 +126,7 @@ func (s *endpointImpl) SendData(data []byte) (err error) {
 	}
 
 	if err != nil && s.observer != nil {
-		s.executePtr.Run(func() {
-			s.observer.OnDisConnect(s)
-		})
+		s.observer.OnDisConnect(s)
 	}
 
 	return
@@ -82,6 +138,10 @@ func (s *endpointImpl) LocalAddr() net.Addr {
 
 func (s *endpointImpl) RemoteAddr() net.Addr {
 	return s.connVal.RemoteAddr()
+}
+
+func (s *endpointImpl) String() string {
+	return s.connVal.LocalAddr().String() + "->" + s.connVal.RemoteAddr().String()
 }
 
 func (s *endpointImpl) RecvData() (err error) {

@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+
+	"github.com/muidea/magicCommon/execute"
 	"github.com/muidea/magicCommon/foundation/log"
 	"github.com/muidea/magicEngine/tcp"
 )
@@ -37,6 +39,8 @@ func main() {
 
 	echo := &Echo{}
 
-	svr := tcp.NewServer(echo, 100)
+	executePtr := execute.NewExecute(1000)
+	epManaer := tcp.NewEndpointManger(echo, &executePtr)
+	svr := tcp.NewServer(epManaer, &executePtr)
 	svr.Run(bindAddr)
 }

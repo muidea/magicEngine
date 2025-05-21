@@ -11,16 +11,19 @@ type Server interface {
 	Run(bindAddr string) error
 }
 
-type serverImpl struct {
-	execute.Execute
-
-	observer Observer
+type ServerSink interface {
+	OnNewConnect(conn net.Conn)
 }
 
-func NewServer(ob Observer, maxConnSize int) Server {
+type serverImpl struct {
+	executePtr *execute.Execute
+	serverSink ServerSink
+}
+
+func NewServer(sink ServerSink, executePtr *execute.Execute) Server {
 	return &serverImpl{
-		Execute:  execute.NewExecute(maxConnSize),
-		observer: ob,
+		executePtr: executePtr,
+		serverSink: sink,
 	}
 }
 
@@ -41,16 +44,14 @@ func (s *serverImpl) Run(bindAddr string) (err error) {
 			continue
 		}
 
-		s.Execute.Run(func() {
+		s.executePtr.Run(func() {
 			log.Infof("accept new connect, from:%s", connVal.RemoteAddr().String())
-			if s.observer == nil {
+			if s.serverSink == nil {
 				_ = connVal.Close()
 				return
 			}
 
-			endpoint := newEndpoint(connVal, s.observer, &s.Execute)
-			defer endpoint.Close()
-			_ = endpoint.RecvData()
+			s.serverSink.OnNewConnect(connVal)
 		})
 	}
 }
