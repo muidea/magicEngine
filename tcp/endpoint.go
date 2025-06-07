@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"bufio"
+	"io"
 	"net"
 	"sync"
 
@@ -149,7 +150,7 @@ func (s *endpointImpl) RecvData() (err error) {
 	buffer := make([]byte, buffSize)
 	for {
 		readSize, readErr := reader.Read(buffer)
-		if readErr != nil {
+		if readErr != nil && readErr != io.EOF {
 			log.Errorf("recv data failed, error:%s", readErr.Error())
 			err = readErr
 			break
