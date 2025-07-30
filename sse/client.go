@@ -258,6 +258,9 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink StreamSi
 		default:
 			byteVal, byteErr := reader.ReadBytes('\n')
 			if byteErr != nil {
+				if byteErr != io.EOF {
+					log.Errorf("read bytes error: %v", byteErr)
+				}
 				return
 			}
 
