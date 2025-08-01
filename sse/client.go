@@ -202,7 +202,9 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			err := ctx.Err()
+			log.Errorf("action failed, serverUrl:%s, context err:%v", s.serverURI, err)
+			return err
 		default:
 			var err error
 			if err = actionFunc(); err != nil {
@@ -260,7 +262,10 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink StreamSi
 			if byteErr != nil {
 				if byteErr != io.EOF {
 					log.Errorf("read bytes error: %v", byteErr)
+					err = byteErr
 				}
+				// 这里不用返回错误，直接结束就可以了
+				//err = byteErr
 				return
 			}
 
