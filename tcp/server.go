@@ -44,8 +44,8 @@ func (s *serverImpl) Run(bindAddr string) (err error) {
 			continue
 		}
 
+		log.Infof("accept new connect, from:%s", connVal.RemoteAddr().String())
 		s.executePtr.Run(func() {
-			log.Infof("accept new connect, from:%s", connVal.RemoteAddr().String())
 			if s.serverSink == nil {
 				_ = connVal.Close()
 				return
