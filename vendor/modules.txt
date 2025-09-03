@@ -21,10 +21,11 @@ github.com/google/uuid
 ## explicit; go 1.18
 github.com/leodido/go-urn
 github.com/leodido/go-urn/scim/schema
-# github.com/muidea/magicCommon v1.4.1 => ../magicCommon
+# github.com/muidea/magicCommon v1.4.11 => ../magicCommon
 ## explicit; go 1.24
 github.com/muidea/magicCommon/execute
 github.com/muidea/magicCommon/foundation/log
+github.com/muidea/magicCommon/foundation/net
 github.com/muidea/magicCommon/foundation/util
 # github.com/muidea/seelog v1.0.0
 ## explicit
@@ -36,6 +37,9 @@ golang.org/x/crypto/sha3
 ## explicit; go 1.18
 golang.org/x/net/html
 golang.org/x/net/html/atom
+# golang.org/x/sync v0.8.0
+## explicit; go 1.18
+golang.org/x/sync/singleflight
 # golang.org/x/sys v0.26.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
@@ -45,4 +49,10 @@ golang.org/x/text/internal/language
 golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
 golang.org/x/text/language
+# gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc
+## explicit
+gopkg.in/alexcesaro/quotedprintable.v3
+# gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
+## explicit
+gopkg.in/gomail.v2
 # github.com/muidea/magicCommon => ../magicCommon
