@@ -15,12 +15,15 @@ type RelativePath struct{}
 type FileName struct{}
 type FileField struct{}
 
+type UploadCallbackFunc func(ctx context.Context, res http.ResponseWriter, req *http.Request, filePath string, err error)
+
 type uploadRoute struct {
 	pattern        string
 	method         string
 	rootUploadPath string
 	relativePath   string
 	maxFileSize    int64
+	callbackFunc   UploadCallbackFunc
 }
 
 func (s *uploadRoute) Pattern() string {
@@ -56,26 +59,41 @@ func (s *uploadRoute) getUploadContext(ctx context.Context, _ http.ResponseWrite
 func (s *uploadRoute) uploadFun(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	relativePath, fileField, fileName := s.getUploadContext(ctx, res, req)
 
-	err := req.ParseMultipartForm(s.maxFileSize)
+	var filePath string
+	var err error
+	defer func() {
+		if s.callbackFunc != nil {
+			s.callbackFunc(ctx, res, req, filePath, err)
+			return
+		}
+		if err != nil {
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		res.WriteHeader(http.StatusOK)
+	}()
+
+	err = req.ParseMultipartForm(s.maxFileSize)
 	if err != nil {
-		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	finalFilePath := filepath.Join(s.rootUploadPath, relativePath)
-	_, fileErr := fn.MultipartFormFile(req, fileField, finalFilePath, fileName)
+	fileName, fileErr := fn.MultipartFormFile(req, fileField, finalFilePath, fileName)
 	if fileErr != nil {
-		res.WriteHeader(http.StatusBadRequest)
+		err = fileErr
 		return
 	}
-	res.WriteHeader(http.StatusOK)
+	filePath = filepath.Join(relativePath, fileName)
 }
 
-func CreateUploadRoute(pattern, method, rootUploadPath, relativePath string, maxFileSize int64) Route {
+func CreateUploadRoute(pattern, method, rootUploadPath, relativePath string, maxFileSize int64, callbackFunc UploadCallbackFunc) Route {
 	return &uploadRoute{
 		pattern:        pattern,
 		method:         method,
 		rootUploadPath: rootUploadPath,
 		relativePath:   relativePath,
 		maxFileSize:    maxFileSize,
+		callbackFunc:   callbackFunc,
 	}
 }
