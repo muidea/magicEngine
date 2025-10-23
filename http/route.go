@@ -101,9 +101,9 @@ func NewPatternFilter(routePattern string) *PatternFilter {
 	return filter
 }
 
-func (s *PatternFilter) Match(path string) bool {
-	matches := s.regex.FindStringSubmatch(path)
-	if len(matches) > 0 && matches[0] == path {
+func (s *PatternFilter) Match(uriPath string) bool {
+	matches := s.regex.FindStringSubmatch(uriPath)
+	if len(matches) > 0 && matches[0] == uriPath {
 		return true
 	}
 
@@ -112,21 +112,44 @@ func (s *PatternFilter) Match(path string) bool {
 
 // 路由对象
 type routeItem struct {
+	versionPrefix  string
 	route          Route
 	middlewareList []MiddleWareHandler
 	patternFilter  *PatternFilter
 }
 
-func (s *routeItem) equal(rt Route) bool {
+func (s *routeItem) equalRoute(versionPrefix string, rt Route) bool {
+	if s.versionPrefix != versionPrefix {
+		return false
+	}
+
 	return s.route.Pattern() == rt.Pattern()
 }
 
-func (s *routeItem) equalPattern(pattern string) bool {
+func (s *routeItem) equalPattern(versionPrefix string, pattern string) bool {
+	if s.versionPrefix != versionPrefix {
+		return false
+	}
+
 	return s.route.Pattern() == pattern
 }
 
-func (s *routeItem) match(path string) bool {
-	return s.patternFilter.Match(path)
+func (s *routeItem) match(uriPath string) bool {
+	return s.patternFilter.Match(uriPath)
+}
+
+func newRouteItem(versionPrefix string, rt Route, filters ...MiddleWareHandler) *routeItem {
+	item := &routeItem{versionPrefix: versionPrefix, route: rt}
+	item.middlewareList = append(item.middlewareList, filters...)
+	rtPattern := rt.Pattern()
+	if versionPrefix != "" {
+		rtPattern = fmt.Sprintf("%s%s", versionPrefix, rtPattern)
+	}
+	item.patternFilter = NewPatternFilter(rtPattern)
+
+	log.Infof("[%s]:%s", rt.Method(), rtPattern)
+
+	return item
 }
 
 type routeItemSlice []*routeItem
@@ -150,20 +173,6 @@ func (s *routeRegistry) GetApiVersion() string {
 	return s.currentApiVersion
 }
 
-func (s *routeRegistry) newRouteItem(rt Route, filters ...MiddleWareHandler) *routeItem {
-	item := &routeItem{route: rt}
-	item.middlewareList = append(item.middlewareList, filters...)
-	rtPattern := rt.Pattern()
-	if s.currentApiVersion != "" {
-		rtPattern = fmt.Sprintf("%s%s", s.currentApiVersion, rtPattern)
-	}
-	item.patternFilter = NewPatternFilter(rtPattern)
-
-	log.Infof("[%s]:%s", rt.Method(), rtPattern)
-
-	return item
-}
-
 func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	ValidateRouteHandler(rt.Handler())
 	for _, val := range filters {
@@ -173,21 +182,22 @@ func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
 
+	curApiVersion := s.currentApiVersion
 	routeSlice, ok := s.routes[rt.Method()]
 	if ok {
 		for _, val := range *routeSlice {
-			if val.equal(rt) {
+			if val.equalRoute(curApiVersion, rt) {
 				msg := fmt.Sprintf("duplicate route!, pattern:%s, method:%s", rt.Pattern(), rt.Method())
 				panicInfo(msg)
 			}
 		}
 
-		item := s.newRouteItem(rt, filters...)
+		item := newRouteItem(curApiVersion, rt, filters...)
 		*routeSlice = append(*routeSlice, item)
 		return
 	}
 
-	item := s.newRouteItem(rt, filters...)
+	item := newRouteItem(curApiVersion, rt, filters...)
 	routeSlice = &routeItemSlice{}
 	*routeSlice = append(*routeSlice, item)
 	s.routes[rt.Method()] = routeSlice
@@ -218,9 +228,10 @@ func (s *routeRegistry) removeRouteImpl(pattern, method string) {
 		panicInfo(msg)
 	}
 
+	curApiVersion := s.currentApiVersion
 	newRoutes := routeItemSlice{}
 	for idx, val := range *routeSlice {
-		if val.equalPattern(pattern) {
+		if val.equalPattern(curApiVersion, pattern) {
 			if idx > 0 {
 				newRoutes = append(newRoutes, (*routeSlice)[0:idx]...)
 			}
