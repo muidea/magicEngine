@@ -29,7 +29,7 @@ const (
 type Route interface {
 	// Method 路由行为GET/PUT/POST/DELETE
 	Method() string
-	// Pattern 路由规则, 以'/'开始
+	// Pattern uri路由规则, 以'/'开始
 	Pattern() string
 	// Handler 路由处理器
 	Handler() func(context.Context, http.ResponseWriter, *http.Request)
@@ -46,21 +46,21 @@ type RouteRegistry interface {
 	// RemoveRoute 清除路由
 	RemoveRoute(rt Route)
 	// AddHandler 增加Handler
-	AddHandler(pattern, method string, handler func(context.Context, http.ResponseWriter, *http.Request), filters ...MiddleWareHandler)
+	AddHandler(uriPattern, method string, handler func(context.Context, http.ResponseWriter, *http.Request), filters ...MiddleWareHandler)
 	// RemoveHandler 清除Handler
-	RemoveHandler(pattern, method string)
+	RemoveHandler(uriPattern, method string)
 	// Handle 分发一条请求
 	Handle(ctx context.Context, res http.ResponseWriter, req *http.Request)
 }
 
 type rtItem struct {
-	pattern string
+	uriPattern string
 	method  string
 	handler func(context.Context, http.ResponseWriter, *http.Request)
 }
 
 func (s *rtItem) Pattern() string {
-	return s.pattern
+	return s.uriPattern
 }
 
 func (s *rtItem) Method() string {
@@ -72,8 +72,8 @@ func (s *rtItem) Handler() func(context.Context, http.ResponseWriter, *http.Requ
 }
 
 // CreateRoute create Route
-func CreateRoute(pattern, method string, handler func(context.Context, http.ResponseWriter, *http.Request)) Route {
-	return &rtItem{pattern: pattern, method: method, handler: handler}
+func CreateRoute(uriPattern, method string, handler func(context.Context, http.ResponseWriter, *http.Request)) Route {
+	return &rtItem{uriPattern: uriPattern, method: method, handler: handler}
 }
 
 // PatternFilter route filter
@@ -85,9 +85,9 @@ var routeReg1 = regexp.MustCompile(`:[^/#?()\.\\]+`)
 var routeReg2 = regexp.MustCompile(`\*\*`)
 
 // NewPatternFilter new route filter
-func NewPatternFilter(routePattern string) *PatternFilter {
+func NewPatternFilter(routeUriPattern string) *PatternFilter {
 	filter := &PatternFilter{}
-	pattern := routeReg1.ReplaceAllStringFunc(routePattern, func(m string) string {
+	pattern := routeReg1.ReplaceAllStringFunc(routeUriPattern, func(m string) string {
 		return fmt.Sprintf(`(?P<%s>[^/#?]+)`, m[1:])
 	})
 	var index int
@@ -126,12 +126,12 @@ func (s *routeItem) equalRoute(versionPrefix string, rt Route) bool {
 	return s.route.Pattern() == rt.Pattern()
 }
 
-func (s *routeItem) equalPattern(versionPrefix string, pattern string) bool {
+func (s *routeItem) equalPattern(versionPrefix string, uriPattern string) bool {
 	if s.versionPrefix != versionPrefix {
 		return false
 	}
 
-	return s.route.Pattern() == pattern
+	return s.route.Pattern() == uriPattern
 }
 
 func (s *routeItem) match(uriPath string) bool {
@@ -207,31 +207,31 @@ func (s *routeRegistry) RemoveRoute(rt Route) {
 	s.removeRouteImpl(rt.Pattern(), rt.Method())
 }
 
-func (s *routeRegistry) AddHandler(pattern, method string,
+func (s *routeRegistry) AddHandler(uriPattern, method string,
 	handler func(context.Context, http.ResponseWriter, *http.Request),
 	filters ...MiddleWareHandler) {
-	rt := CreateRoute(pattern, method, handler)
+	rt := CreateRoute(uriPattern, method, handler)
 	s.AddRoute(rt, filters...)
 }
 
-func (s *routeRegistry) RemoveHandler(pattern, method string) {
-	s.removeRouteImpl(pattern, method)
+func (s *routeRegistry) RemoveHandler(uriPattern, method string) {
+	s.removeRouteImpl(uriPattern, method)
 }
 
-func (s *routeRegistry) removeRouteImpl(pattern, method string) {
+func (s *routeRegistry) removeRouteImpl(uriPattern, method string) {
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
 
 	routeSlice, ok := s.routes[method]
 	if !ok {
-		msg := fmt.Sprintf("no found route!, pattern:%s, method:%s", pattern, method)
+		msg := fmt.Sprintf("no found route!, pattern:%s, method:%s", uriPattern, method)
 		panicInfo(msg)
 	}
 
 	curApiVersion := s.currentApiVersion
 	newRoutes := routeItemSlice{}
 	for idx, val := range *routeSlice {
-		if val.equalPattern(curApiVersion, pattern) {
+		if val.equalPattern(curApiVersion, uriPattern) {
 			if idx > 0 {
 				newRoutes = append(newRoutes, (*routeSlice)[0:idx]...)
 			}
