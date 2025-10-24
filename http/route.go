@@ -51,12 +51,16 @@ type RouteRegistry interface {
 	RemoveHandler(uriPattern, method string)
 	// Handle 分发一条请求
 	Handle(ctx context.Context, res http.ResponseWriter, req *http.Request)
+	// ExistRoute 路由是否存在
+	ExistRoute(rt Route) bool
+	// ExistHandler Handler是否存在
+	ExistHandler(uriPattern, method string) bool
 }
 
 type rtItem struct {
 	uriPattern string
-	method  string
-	handler func(context.Context, http.ResponseWriter, *http.Request)
+	method     string
+	handler    func(context.Context, http.ResponseWriter, *http.Request)
 }
 
 func (s *rtItem) Pattern() string {
@@ -277,4 +281,27 @@ func (s *routeRegistry) Handle(ctx context.Context, res http.ResponseWriter, req
 
 	http.NotFound(res, req)
 	//http.Redirect(res, req, "/404.html", http.StatusMovedPermanently)
+}
+
+func (s *routeRegistry) ExistRoute(rt Route) bool {
+	return s.ExistHandler(rt.Method(), rt.Pattern())
+}
+
+func (s *routeRegistry) ExistHandler(uriPattern, method string) bool {
+	s.routesLock.Lock()
+	defer s.routesLock.Unlock()
+
+	routeSlice, ok := s.routes[method]
+	if !ok {
+		return false
+	}
+
+	curApiVersion := s.currentApiVersion
+	for _, val := range *routeSlice {
+		if val.equalPattern(curApiVersion, uriPattern) {
+			return true
+		}
+	}
+
+	return false
 }
