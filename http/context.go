@@ -95,7 +95,8 @@ func ValidateRouteHandler(handler interface{}) {
 	}
 
 	paramNum := handlerType.NumIn()
-	if paramNum == maxRouteHandleParamNum {
+	switch paramNum {
+	case maxRouteHandleParamNum:
 		param0 := handlerType.In(0)
 		if param0.Kind() != reflect.Interface {
 			panicInfo("route handler invalid handle func param0 type")
@@ -118,7 +119,7 @@ func ValidateRouteHandler(handler interface{}) {
 		if param2.String() != "*http.Request" {
 			panicInfo("route handler invalid handle func param2 type, expect: *http.Request")
 		}
-	} else if paramNum == minRouteHandleParamNum {
+	case minRouteHandleParamNum:
 		param0 := handlerType.In(0)
 		if param0.Kind() != reflect.Interface {
 			panicInfo("route handler invalid handle func param0 type")
@@ -134,7 +135,7 @@ func ValidateRouteHandler(handler interface{}) {
 		if param1.String() != "*http.Request" {
 			panicInfo("route handler invalid handle func param0 type, expect: *http.Request")
 		}
-	} else {
+	default:
 		panicInfo("illegal callable func")
 	}
 }
@@ -149,16 +150,17 @@ func InvokeRouteHandler(handler interface{}, ctx context.Context, res http.Respo
 
 	var params []reflect.Value
 	paramNum := handlerType.NumIn()
-	if paramNum == maxRouteHandleParamNum {
+	switch paramNum {
+	case maxRouteHandleParamNum:
 		params = make([]reflect.Value, maxRouteHandleParamNum)
 		params[0] = reflect.ValueOf(ctx)
 		params[1] = reflect.ValueOf(res)
 		params[2] = reflect.ValueOf(req)
-	} else if paramNum == minRouteHandleParamNum {
+	case minRouteHandleParamNum:
 		params = make([]reflect.Value, minRouteHandleParamNum)
 		params[0] = reflect.ValueOf(res)
 		params[1] = reflect.ValueOf(req)
-	} else {
+	default:
 		panicInfo("illegal callable func")
 	}
 

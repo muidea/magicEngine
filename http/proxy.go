@@ -30,14 +30,14 @@ func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
 }
 
 type proxyRoute struct {
-	pattern    string
+	uriPattern    string
 	method     string
 	reallyURL  string
 	rewriteURL bool
 }
 
 func (s *proxyRoute) Pattern() string {
-	return s.pattern
+	return s.uriPattern
 }
 
 func (s *proxyRoute) Method() string {
@@ -91,6 +91,6 @@ func (s *proxyRoute) proxyFun(_ context.Context, res http.ResponseWriter, req *h
 }
 
 // CreateProxyRoute create proxy route
-func CreateProxyRoute(pattern, method, reallyURL string, rewriteURL bool) Route {
-	return &proxyRoute{pattern: pattern, method: method, reallyURL: reallyURL, rewriteURL: rewriteURL}
+func CreateProxyRoute(uriPattern, method, reallyURL string, rewriteURL bool) Route {
+	return &proxyRoute{uriPattern: uriPattern, method: method, reallyURL: reallyURL, rewriteURL: rewriteURL}
 }

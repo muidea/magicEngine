@@ -18,7 +18,7 @@ type FileField struct{}
 type UploadCallbackFunc func(ctx context.Context, res http.ResponseWriter, req *http.Request, filePath string, err error)
 
 type uploadRoute struct {
-	pattern        string
+	uriPattern     string
 	method         string
 	rootUploadPath string
 	relativePath   string
@@ -27,7 +27,7 @@ type uploadRoute struct {
 }
 
 func (s *uploadRoute) Pattern() string {
-	return s.pattern
+	return s.uriPattern
 }
 
 func (s *uploadRoute) Method() string {
@@ -87,9 +87,9 @@ func (s *uploadRoute) uploadFun(ctx context.Context, res http.ResponseWriter, re
 	filePath = filepath.Join(relativePath, fileName)
 }
 
-func CreateUploadRoute(pattern, method, rootUploadPath, relativePath string, maxFileSize int64, callbackFunc UploadCallbackFunc) Route {
+func CreateUploadRoute(uriPattern, method, rootUploadPath, relativePath string, maxFileSize int64, callbackFunc UploadCallbackFunc) Route {
 	return &uploadRoute{
-		pattern:        pattern,
+		uriPattern:     uriPattern,
 		method:         method,
 		rootUploadPath: rootUploadPath,
 		relativePath:   relativePath,

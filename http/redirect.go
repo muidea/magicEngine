@@ -6,7 +6,7 @@ import (
 )
 
 type redirectRoute struct {
-	pattern         string
+	uriPattern      string
 	method          string
 	redirectPattern string
 }
@@ -16,7 +16,7 @@ func (s *redirectRoute) Method() string {
 }
 
 func (s *redirectRoute) Pattern() string {
-	return s.pattern
+	return s.uriPattern
 }
 
 func (s *redirectRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
@@ -25,6 +25,6 @@ func (s *redirectRoute) Handler() func(context.Context, http.ResponseWriter, *ht
 	}
 }
 
-func CreateRedirectRoute(pattern, method, redirectPattern string) Route {
-	return &redirectRoute{pattern: pattern, method: method, redirectPattern: redirectPattern}
+func CreateRedirectRoute(uriPattern, method, redirectPattern string) Route {
+	return &redirectRoute{uriPattern: uriPattern, method: method, redirectPattern: redirectPattern}
 }
