@@ -191,7 +191,7 @@ func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	if ok {
 		for _, val := range *routeSlice {
 			if val.equalRoute(curApiVersion, rt) {
-				msg := fmt.Sprintf("duplicate route!, pattern:%s, method:%s", rt.Pattern(), rt.Method())
+				msg := fmt.Sprintf("duplicate route!, apiVersion:%s, pattern:%s, method:%s", curApiVersion, rt.Pattern(), rt.Method())
 				panicInfo(msg)
 			}
 		}
@@ -284,7 +284,7 @@ func (s *routeRegistry) Handle(ctx context.Context, res http.ResponseWriter, req
 }
 
 func (s *routeRegistry) ExistRoute(rt Route) bool {
-	return s.ExistHandler(rt.Method(), rt.Pattern())
+	return s.ExistHandler(rt.Pattern(), rt.Method())
 }
 
 func (s *routeRegistry) ExistHandler(uriPattern, method string) bool {
