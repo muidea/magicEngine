@@ -42,10 +42,8 @@ type RouteRegistry interface {
 	// GetApiVersion 查询ApiVersion
 	GetApiVersion() string
 	// AddRoute 增加路由
-	// Deprecated: 推荐使用AddHandler
 	AddRoute(rt Route, filters ...MiddleWareHandler)
 	// RemoveRoute 清除路由
-	// Deprecated: 推荐使用RemoveHandler
 	RemoveRoute(rt Route)
 	// AddHandler 增加Handler
 	AddHandler(uriPattern, method string, handler RouteHandleFunc, filters ...MiddleWareHandleFunc)
