@@ -19,7 +19,7 @@ func (s *redirectRoute) Pattern() string {
 	return s.uriPattern
 }
 
-func (s *redirectRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+func (s *redirectRoute) Handler() RouteHandleFunc {
 	return func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		http.Redirect(res, req, s.redirectPattern, http.StatusSeeOther)
 	}

@@ -32,7 +32,7 @@ type Route interface {
 	// Pattern uri路由规则, 以'/'开始
 	Pattern() string
 	// Handler 路由处理器
-	Handler() func(context.Context, http.ResponseWriter, *http.Request)
+	Handler() RouteHandleFunc
 }
 
 // RouteRegistry 路由器对象
@@ -46,7 +46,7 @@ type RouteRegistry interface {
 	// RemoveRoute 清除路由
 	RemoveRoute(rt Route)
 	// AddHandler 增加Handler
-	AddHandler(uriPattern, method string, handler func(context.Context, http.ResponseWriter, *http.Request), filters ...MiddleWareHandler)
+	AddHandler(uriPattern, method string, handler RouteHandleFunc, filters ...MiddleWareHandleFunc)
 	// RemoveHandler 清除Handler
 	RemoveHandler(uriPattern, method string)
 	// Handle 分发一条请求
@@ -60,7 +60,7 @@ type RouteRegistry interface {
 type rtItem struct {
 	uriPattern string
 	method     string
-	handler    func(context.Context, http.ResponseWriter, *http.Request)
+	handler    RouteHandleFunc
 }
 
 func (s *rtItem) Pattern() string {
@@ -71,7 +71,7 @@ func (s *rtItem) Method() string {
 	return s.method
 }
 
-func (s *rtItem) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+func (s *rtItem) Handler() RouteHandleFunc {
 	return s.handler
 }
 
@@ -178,11 +178,6 @@ func (s *routeRegistry) GetApiVersion() string {
 }
 
 func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
-	ValidateRouteHandler(rt.Handler())
-	for _, val := range filters {
-		ValidateMiddleWareHandler(val)
-	}
-
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
 
@@ -212,10 +207,18 @@ func (s *routeRegistry) RemoveRoute(rt Route) {
 }
 
 func (s *routeRegistry) AddHandler(uriPattern, method string,
-	handler func(context.Context, http.ResponseWriter, *http.Request),
-	filters ...MiddleWareHandler) {
+	handler RouteHandleFunc,
+	filters ...MiddleWareHandleFunc) {
 	rt := CreateRoute(uriPattern, method, handler)
-	s.AddRoute(rt, filters...)
+
+	middleWareList := make([]MiddleWareHandler, len(filters))
+	for idx := range filters {
+		middleWareList[idx] = &anonymousMiddleWareHandler{
+			handleFunc: filters[idx],
+		}
+	}
+
+	s.AddRoute(rt, middleWareList...)
 }
 
 func (s *routeRegistry) RemoveHandler(uriPattern, method string) {

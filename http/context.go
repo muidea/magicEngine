@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"net/http"
-	"reflect"
 )
 
 type RequestContext interface {
@@ -14,173 +13,19 @@ type RequestContext interface {
 	Run()
 }
 
-const (
-	middleWareHandleParamNum = 4
-	maxRouteHandleParamNum   = 3
-	minRouteHandleParamNum   = 2
-)
-
-// ValidateMiddleWareHandler 校验MiddleWareHandler
-func ValidateMiddleWareHandler(handler interface{}) {
-	handlerType := reflect.TypeOf(handler)
-	if handlerType.Kind() != reflect.Ptr {
-		panicInfo("middleware handler must be a callable interface")
-	}
-
-	handlerMethod, ok := handlerType.MethodByName("MiddleWareHandle")
-	if !ok {
-		panicInfo("middleware handler isn\\'t have Handle func")
-	}
-
-	methodType := handlerMethod.Type
-	paramNum := methodType.NumIn()
-	if paramNum != middleWareHandleParamNum {
-		panicInfo("middleware handler invalid handle func param number")
-	}
-
-	// param0 := methodType.In(0).String()
-	param1 := methodType.In(1)
-	if param1.Kind() != reflect.Interface {
-		panicInfo("middleware handler invalid handle func param0 type")
-	}
-	if param1.Name() != "RequestContext" {
-		panicInfo("middleware handler invalid handle func param0 type")
-	}
-	param2 := methodType.In(2)
-	if param2.Kind() != reflect.Interface {
-		panicInfo("middleware handler invalid handle func param1 type")
-	}
-	if param2.String() != "http.ResponseWriter" {
-		panicInfo("middleware handler invalid handle func param1 type")
-	}
-
-	param3 := methodType.In(3)
-	if param3.Kind() != reflect.Ptr {
-		panicInfo("middleware handler invalid handle func param2 type")
-	}
-	if param3.String() != "*http.Request" {
-		panicInfo("middleware handler invalid handle func param2 type")
-	}
-}
-
-// InvokeMiddleWareHandler 执行MiddleWareHandle
-func InvokeMiddleWareHandler(handler interface{}, ctx RequestContext, res http.ResponseWriter, req *http.Request) {
-	params := make([]reflect.Value, middleWareHandleParamNum)
-	params[0] = reflect.ValueOf(handler)
-	params[1] = reflect.ValueOf(ctx)
-	params[2] = reflect.ValueOf(res)
-	params[3] = reflect.ValueOf(req)
-
-	handlerType := reflect.TypeOf(handler)
-	// 已经验证通过，所以这里就不用继续判断
-	//if handlerType.Kind() != reflect.Ptr {
-	//	panicInfo("middleware handler must be a callable interface")
-	//}
-
-	handlerMethod, _ := handlerType.MethodByName("MiddleWareHandle")
-	// 已经验证通过，所以这里就不用继续判断
-	//if !ok {
-	//	panicInfo("middleware handler isn\\'t have Handle func")
-	//}
-
-	fv := handlerMethod.Func
-	fv.Call(params)
-}
-
-// ValidateRouteHandler 校验RouteHandler
-func ValidateRouteHandler(handler interface{}) {
-	handlerType := reflect.TypeOf(handler)
-	if handlerType.Kind() != reflect.Func {
-		panicInfo("route handler must be a callable func")
-	}
-
-	paramNum := handlerType.NumIn()
-	switch paramNum {
-	case maxRouteHandleParamNum:
-		param0 := handlerType.In(0)
-		if param0.Kind() != reflect.Interface {
-			panicInfo("route handler invalid handle func param0 type")
-		}
-		if param0.Name() != "Context" {
-			panicInfo("route handler invalid handle func param0 type, expect: Context")
-		}
-		param1 := handlerType.In(1)
-		if param1.Kind() != reflect.Interface {
-			panicInfo("route handler invalid handle func param1 type")
-		}
-		if param1.String() != "http.ResponseWriter" {
-			panicInfo("route handler invalid handle func param1 type, expect: http.ResponseWriter")
-		}
-
-		param2 := handlerType.In(2)
-		if param2.Kind() != reflect.Ptr {
-			panicInfo("route handler invalid handle func param2 type")
-		}
-		if param2.String() != "*http.Request" {
-			panicInfo("route handler invalid handle func param2 type, expect: *http.Request")
-		}
-	case minRouteHandleParamNum:
-		param0 := handlerType.In(0)
-		if param0.Kind() != reflect.Interface {
-			panicInfo("route handler invalid handle func param0 type")
-		}
-		if param0.String() != "http.ResponseWriter" {
-			panicInfo("route handler invalid handle func param0 type, expect: http.ResponseWriter")
-		}
-
-		param1 := handlerType.In(1)
-		if param1.Kind() != reflect.Ptr {
-			panicInfo("route handler invalid handle func param0 type")
-		}
-		if param1.String() != "*http.Request" {
-			panicInfo("route handler invalid handle func param0 type, expect: *http.Request")
-		}
-	default:
-		panicInfo("illegal callable func")
-	}
-}
-
-// InvokeRouteHandler 执行RouteHandle
-func InvokeRouteHandler(handler interface{}, ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	handlerType := reflect.TypeOf(handler)
-	// 已经验证通过，所以这里就不用继续判断
-	//if handlerType.Kind() != reflect.Func {
-	//	panicInfo("route handler must be a callable func")
-	//}
-
-	var params []reflect.Value
-	paramNum := handlerType.NumIn()
-	switch paramNum {
-	case maxRouteHandleParamNum:
-		params = make([]reflect.Value, maxRouteHandleParamNum)
-		params[0] = reflect.ValueOf(ctx)
-		params[1] = reflect.ValueOf(res)
-		params[2] = reflect.ValueOf(req)
-	case minRouteHandleParamNum:
-		params = make([]reflect.Value, minRouteHandleParamNum)
-		params[0] = reflect.ValueOf(res)
-		params[1] = reflect.ValueOf(req)
-	default:
-		panicInfo("illegal callable func")
-	}
-
-	fv := reflect.ValueOf(handler)
-	fv.Call(params)
-}
-
 type requestContext struct {
-	filters []MiddleWareHandler
-	rw      ResponseWriter
-	req     *http.Request
-	index   int
+	filterFuncs []MiddleWareHandleFunc
+	rw          ResponseWriter
+	req         *http.Request
+	index       int
 
 	routeRegistry RouteRegistry
 	context       context.Context
 }
 
 // NewRequestContext 新建Context
-func NewRequestContext(filters []MiddleWareHandler, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
-	return &requestContext{filters: filters, routeRegistry: routeRegistry, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
+func NewRequestContext(filters []MiddleWareHandleFunc, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
+	return &requestContext{filterFuncs: filters, routeRegistry: routeRegistry, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
 }
 
 func (c *requestContext) Update(ctx context.Context) {
@@ -201,10 +46,11 @@ func (c *requestContext) Written() bool {
 }
 
 func (c *requestContext) Run() {
-	totalSize := len(c.filters)
+	totalSize := len(c.filterFuncs)
 	for c.index < totalSize {
-		handler := c.filters[c.index]
-		InvokeMiddleWareHandler(handler, c, c.rw, c.req)
+		handler := c.filterFuncs[c.index]
+		handler(c, c.rw, c.req)
+		//InvokeMiddleWareHandler(handler, c, c.rw, c.req)
 
 		c.index++
 		if c.Written() {
@@ -260,7 +106,7 @@ func (c *routeContext) Run() {
 	totalSize := len(c.filters)
 	for c.index < totalSize {
 		handler := c.filters[c.index]
-		InvokeMiddleWareHandler(handler, c, c.rw, c.req)
+		handler.MiddleWareHandle(c, c.rw, c.req)
 
 		c.index++
 		if c.Written() {
@@ -269,7 +115,9 @@ func (c *routeContext) Run() {
 	}
 
 	if !c.Written() {
-		InvokeRouteHandler(c.route.Handler(), c.context, c.rw, c.req)
+		funHandle := c.route.Handler()
+		funHandle(c.context, c.rw, c.req)
+		//InvokeRouteHandler(c.route.Handler(), c.context, c.rw, c.req)
 	}
 
 	if !c.Written() {

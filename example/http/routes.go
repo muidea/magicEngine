@@ -28,7 +28,7 @@ func (s *getRoute) Pattern() string {
 	return "/demo/:id"
 }
 
-func (s *getRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+func (s *getRoute) Handler() engine.RouteHandleFunc {
 	return s.getDemo
 }
 
@@ -52,7 +52,7 @@ func (s *getRoute2) Pattern() string {
 	return "/hello/:id"
 }
 
-func (s *getRoute2) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+func (s *getRoute2) Handler() engine.RouteHandleFunc {
 	return s.getDemo
 }
 

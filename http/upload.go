@@ -34,7 +34,7 @@ func (s *uploadRoute) Method() string {
 	return s.method
 }
 
-func (s *uploadRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+func (s *uploadRoute) Handler() RouteHandleFunc {
 	return s.uploadFun
 }
 

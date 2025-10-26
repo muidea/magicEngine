@@ -30,7 +30,7 @@ func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
 }
 
 type proxyRoute struct {
-	uriPattern    string
+	uriPattern string
 	method     string
 	reallyURL  string
 	rewriteURL bool
@@ -44,7 +44,7 @@ func (s *proxyRoute) Method() string {
 	return s.method
 }
 
-func (s *proxyRoute) Handler() func(context.Context, http.ResponseWriter, *http.Request) {
+func (s *proxyRoute) Handler() RouteHandleFunc {
 	return s.proxyFun
 }
 
