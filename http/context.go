@@ -25,7 +25,14 @@ type requestContext struct {
 
 // NewRequestContext 新建Context
 func NewRequestContext(filters []MiddleWareHandleFunc, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
-	return &requestContext{filterFuncs: filters, routeRegistry: routeRegistry, context: ctx, rw: NewResponseWriter(res), req: req, index: 0}
+	return &requestContext{
+		filterFuncs:   filters,
+		routeRegistry: routeRegistry,
+		context:       ctx,
+		rw:            NewResponseWriter(res),
+		req:           req,
+		index:         0,
+	}
 }
 
 func (c *requestContext) Update(ctx context.Context) {
@@ -59,7 +66,7 @@ func (c *requestContext) Run() {
 	}
 
 	if !c.Written() && c.routeRegistry != nil {
-		c.routeRegistry.Handle(c.context, c.rw, c.req)
+		c.routeRegistry.Handle(c.context, c.rw.(http.ResponseWriter), c.req)
 		if !c.Written() {
 			http.Error(c.rw, "", http.StatusNoContent)
 		}
@@ -82,7 +89,14 @@ type routeContext struct {
 
 // NewRouteContext 新建Context
 func NewRouteContext(reqCtx context.Context, filters []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
-	return &routeContext{filters: filters, route: route, rw: NewResponseWriter(res), req: req, index: 0, context: reqCtx}
+	return &routeContext{
+		filters: filters,
+		route:   route,
+		rw:      res.(ResponseWriter),
+		req:     req,
+		index:   0,
+		context: reqCtx,
+	}
 }
 
 func (c *routeContext) Update(ctx context.Context) {
