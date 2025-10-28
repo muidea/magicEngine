@@ -8,6 +8,7 @@ import (
 type RequestContext interface {
 	Update(ctx context.Context)
 	Context() context.Context
+	Value(key any) any
 	Next()
 	Written() bool
 	Run()
@@ -41,6 +42,10 @@ func (c *requestContext) Update(ctx context.Context) {
 
 func (c *requestContext) Context() context.Context {
 	return c.context
+}
+
+func (c *requestContext) Value(key any) any {
+	return c.context.Value(key)
 }
 
 func (c *requestContext) Next() {
@@ -105,6 +110,10 @@ func (c *routeContext) Update(ctx context.Context) {
 
 func (c *routeContext) Context() context.Context {
 	return c.context
+}
+
+func (c *routeContext) Value(key any) any {
+	return c.context.Value(key)
 }
 
 func (c *routeContext) Next() {

@@ -21,9 +21,12 @@ const (
 )
 
 const (
-	DynamicTag   = "X-ENGINE-DYNAMIC-TAG"
-	DynamicValue = "X-ENGINE-DYNAMIC-VALUE"
+	DynamicTag           = "X-ENGINE-DYNAMIC-TAG"
+	DynamicValue         = "X-ENGINE-DYNAMIC-VALUE"
+	DynamicRawUriPattern = "X-ENGINE-DYNAMIC-RAW-URI-PATTERN"
 )
+
+type RawUriPattern struct{}
 
 // Route 路由接口
 type Route interface {
