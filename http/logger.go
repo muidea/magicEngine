@@ -22,10 +22,10 @@ func (s *logger) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 		}
 	}
 
+	curSerial := s.serialNo
 	s.serialNo++
-
 	if EnableTrace() {
-		log.Infof("Started-%05d %s %s for %s", s.serialNo, req.Method, req.URL.Path, addr)
+		log.Infof("Started-%05d %s %s for %s", curSerial, req.Method, req.URL.Path, addr)
 	}
 
 	rw := res.(ResponseWriter)
@@ -33,8 +33,8 @@ func (s *logger) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 
 	elapseVal := time.Since(start)
 	if EnableTrace() {
-		log.Infof("Completed-%05d %v %s in %v", s.serialNo, rw.Status(), http.StatusText(rw.Status()), elapseVal)
+		log.Infof("Completed-%05d %v %s in %v", curSerial, rw.Status(), http.StatusText(rw.Status()), elapseVal)
 	} else if elapseVal >= GetElapseThreshold() {
-		log.Warnf("Handle-%05d %s %s for %s %v in %v", s.serialNo, req.Method, req.URL.Path, addr, rw.Status(), elapseVal)
+		log.Warnf("Handle-%05d %s %s for %s %v in %v", curSerial, req.Method, req.URL.Path, addr, rw.Status(), elapseVal)
 	}
 }
