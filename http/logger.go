@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/muidea/magicCommon/foundation/log"
@@ -22,8 +23,7 @@ func (s *logger) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 		}
 	}
 
-	curSerial := s.serialNo
-	s.serialNo++
+	curSerial := atomic.AddInt64(&s.serialNo, 1)
 	if EnableTrace() {
 		log.Infof("Started-%05d %s %s for %s", curSerial, req.Method, req.URL.Path, addr)
 	}
