@@ -16,16 +16,16 @@ type HTTPServer interface {
 }
 
 type httpServer struct {
-	listenAddr    string
-	routeRegistry RouteRegistry
-	filter        MiddleWareChains
-	staticOptions *StaticOptions
+	listenAddr       string
+	routeRegistry    RouteRegistry
+	middlewareChains MiddleWareChains
+	staticOptions    *StaticOptions
 }
 
 // NewHTTPServer 新建HTTPServer
 func NewHTTPServer(bindPort string, enableStatic bool) HTTPServer {
 	listenAddr := fmt.Sprintf(":%s", bindPort)
-	svr := &httpServer{listenAddr: listenAddr, filter: NewMiddleWareChains()}
+	svr := &httpServer{listenAddr: listenAddr, middlewareChains: NewMiddleWareChains()}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
@@ -39,13 +39,13 @@ func NewHTTPServer(bindPort string, enableStatic bool) HTTPServer {
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	valueContext := context.WithValue(req.Context(), systemStatic{}, s.staticOptions)
-	ctx := NewRequestContext(s.filter.GetHandlers(), s.routeRegistry, valueContext, res, req)
+	ctx := NewRequestContext(s.middlewareChains.GetHandlers(), s.routeRegistry, valueContext, res, req)
 
 	ctx.Run()
 }
 
 func (s *httpServer) Use(handler MiddleWareHandler) {
-	s.filter.Append(handler)
+	s.middlewareChains.Append(handler)
 }
 
 func (s *httpServer) Bind(routeRegistry RouteRegistry) {

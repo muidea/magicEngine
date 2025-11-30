@@ -15,24 +15,24 @@ type RequestContext interface {
 }
 
 type requestContext struct {
-	filterFuncs []MiddleWareHandleFunc
-	rw          ResponseWriter
-	req         *http.Request
-	index       int
+	middlewareChainsFuncs []MiddleWareHandleFunc
+	rw                     ResponseWriter
+	req                    *http.Request
+	index                  int
 
 	routeRegistry RouteRegistry
 	context       context.Context
 }
 
 // NewRequestContext 新建Context
-func NewRequestContext(filters []MiddleWareHandleFunc, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
+func NewRequestContext(middlewareChains []MiddleWareHandleFunc, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
 	return &requestContext{
-		filterFuncs:   filters,
-		routeRegistry: routeRegistry,
-		context:       ctx,
-		rw:            NewResponseWriter(res),
-		req:           req,
-		index:         0,
+		middlewareChainsFuncs: middlewareChains,
+		routeRegistry:          routeRegistry,
+		context:                ctx,
+		rw:                     NewResponseWriter(res),
+		req:                    req,
+		index:                  0,
 	}
 }
 
@@ -58,10 +58,10 @@ func (c *requestContext) Written() bool {
 }
 
 func (c *requestContext) Run() {
-	totalSize := len(c.filterFuncs)
+	totalSize := len(c.middlewareChainsFuncs)
+	// 先执行中间件
 	for c.index < totalSize {
-		handler := c.filterFuncs[c.index]
-		handler(c, c.rw, c.req)
+		c.middlewareChainsFuncs[c.index](c, c.rw, c.req)
 		//InvokeMiddleWareHandler(handler, c, c.rw, c.req)
 
 		c.index++
@@ -83,24 +83,24 @@ func (c *requestContext) Run() {
 }
 
 type routeContext struct {
-	filters []MiddleWareHandler
-	rw      ResponseWriter
-	req     *http.Request
-	index   int
+	middlewareChainsHandler []MiddleWareHandler
+	rw                       ResponseWriter
+	req                      *http.Request
+	index                    int
 
 	route   Route
 	context context.Context
 }
 
 // NewRouteContext 新建Context
-func NewRouteContext(reqCtx context.Context, filters []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
+func NewRouteContext(reqCtx context.Context, chainsHandler []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
 	return &routeContext{
-		filters: filters,
-		route:   route,
-		rw:      res.(ResponseWriter),
-		req:     req,
-		index:   0,
-		context: reqCtx,
+		middlewareChainsHandler: chainsHandler,
+		route:                    route,
+		rw:                       res.(ResponseWriter),
+		req:                      req,
+		index:                    0,
+		context:                  reqCtx,
 	}
 }
 
@@ -126,11 +126,9 @@ func (c *routeContext) Written() bool {
 }
 
 func (c *routeContext) Run() {
-	totalSize := len(c.filters)
+	totalSize := len(c.middlewareChainsHandler)
 	for c.index < totalSize {
-		handler := c.filters[c.index]
-		handler.MiddleWareHandle(c, c.rw, c.req)
-
+		c.middlewareChainsHandler[c.index].MiddleWareHandle(c, c.rw, c.req)
 		c.index++
 		if c.Written() {
 			return
