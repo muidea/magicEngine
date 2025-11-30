@@ -16,9 +16,9 @@ type RequestContext interface {
 
 type requestContext struct {
 	middlewareChainsFuncs []MiddleWareHandleFunc
-	rw                     ResponseWriter
-	req                    *http.Request
-	index                  int
+	rw                    ResponseWriter
+	req                   *http.Request
+	index                 int
 
 	routeRegistry RouteRegistry
 	context       context.Context
@@ -28,11 +28,11 @@ type requestContext struct {
 func NewRequestContext(middlewareChains []MiddleWareHandleFunc, routeRegistry RouteRegistry, ctx context.Context, res http.ResponseWriter, req *http.Request) RequestContext {
 	return &requestContext{
 		middlewareChainsFuncs: middlewareChains,
-		routeRegistry:          routeRegistry,
-		context:                ctx,
-		rw:                     NewResponseWriter(res),
-		req:                    req,
-		index:                  0,
+		routeRegistry:         routeRegistry,
+		context:               ctx,
+		rw:                    NewResponseWriter(res),
+		req:                   req,
+		index:                 0,
 	}
 }
 
@@ -71,7 +71,7 @@ func (c *requestContext) Run() {
 	}
 
 	if !c.Written() && c.routeRegistry != nil {
-		c.routeRegistry.Handle(c.context, c.rw.(http.ResponseWriter), c.req)
+		c.routeRegistry.Handle(c.Context(), c.rw.(http.ResponseWriter), c.req)
 		if !c.Written() {
 			http.Error(c.rw, "", http.StatusNoContent)
 		}
@@ -84,9 +84,9 @@ func (c *requestContext) Run() {
 
 type routeContext struct {
 	middlewareChainsHandler []MiddleWareHandler
-	rw                       ResponseWriter
-	req                      *http.Request
-	index                    int
+	rw                      ResponseWriter
+	req                     *http.Request
+	index                   int
 
 	route   Route
 	context context.Context
@@ -96,11 +96,11 @@ type routeContext struct {
 func NewRouteContext(reqCtx context.Context, chainsHandler []MiddleWareHandler, route Route, res http.ResponseWriter, req *http.Request) RequestContext {
 	return &routeContext{
 		middlewareChainsHandler: chainsHandler,
-		route:                    route,
-		rw:                       res.(ResponseWriter),
-		req:                      req,
-		index:                    0,
-		context:                  reqCtx,
+		route:                   route,
+		rw:                      res.(ResponseWriter),
+		req:                     req,
+		index:                   0,
+		context:                 reqCtx,
 	}
 }
 
@@ -137,7 +137,7 @@ func (c *routeContext) Run() {
 
 	if !c.Written() {
 		funHandle := c.route.Handler()
-		funHandle(c.context, c.rw, c.req)
+		funHandle(c.Context(), c.rw, c.req)
 		//InvokeRouteHandler(c.route.Handler(), c.context, c.rw, c.req)
 	}
 

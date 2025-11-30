@@ -38,8 +38,8 @@ func NewHTTPServer(bindPort string, enableStatic bool) HTTPServer {
 }
 
 func (s *httpServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	valueContext := context.WithValue(req.Context(), systemStatic{}, s.staticOptions)
-	ctx := NewRequestContext(s.middlewareChains.GetHandlers(), s.routeRegistry, valueContext, res, req)
+	httpContext := context.WithValue(req.Context(), systemStatic{}, s.staticOptions)
+	ctx := NewRequestContext(s.middlewareChains.GetHandlers(), s.routeRegistry, httpContext, res, req)
 
 	ctx.Run()
 }
