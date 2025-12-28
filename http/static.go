@@ -11,6 +11,10 @@ import (
 	"github.com/muidea/magicCommon/foundation/log"
 )
 
+type Verifier interface {
+	Verify(ctx RequestContext, res http.ResponseWriter, req *http.Request) error
+}
+
 // StaticOptions 是指定静态文件服务配置选项的结构体
 type StaticOptions struct {
 	Path string
@@ -46,6 +50,23 @@ func prepareStaticOptions(option *StaticOptions) StaticOptions {
 		opt.PrefixUri = strings.TrimRight(opt.PrefixUri, "/")
 	}
 	return opt
+}
+
+func NewShareStatic(rootPath string) *ShareStatic {
+	return &ShareStatic{
+		rootPath:  rootPath,
+		subPrefix: share,
+	}
+}
+
+func NewPrivateStatic(rootPath string, verifier Verifier) *PrivateStatic {
+	return &PrivateStatic{
+		ShareStatic: ShareStatic{
+			rootPath:  rootPath,
+			subPrefix: private,
+		},
+		verifier: verifier,
+	}
 }
 
 // ShareStatic 静态文件处理器
@@ -101,7 +122,7 @@ func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
-		fileUrI = fileUrI[len(prefixUrl):]
+		fileUrI = fileUrI[len(opt.PrefixUri):]
 		if fileUrI != "" && fileUrI[0] != '/' {
 			err = fmt.Errorf("the requested url was not found on this server")
 			return
@@ -172,4 +193,21 @@ func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 	}
 
 	http.ServeContent(res, req, fileUrI, staticFileInfo.ModTime(), staticFile)
+}
+
+type PrivateStatic struct {
+	ShareStatic
+
+	verifier Verifier
+}
+
+func (s *PrivateStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
+	if s.verifier != nil {
+		if err := s.verifier.Verify(ctx, res, req); err != nil {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+	}
+
+	s.ShareStatic.MiddleWareHandle(ctx, res, req)
 }
