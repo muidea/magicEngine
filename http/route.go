@@ -13,6 +13,7 @@ import (
 
 // 基本HTTP行为定义
 const (
+	HEAD    = "HEAD"
 	GET     = "GET"
 	POST    = "POST"
 	PUT     = "PUT"

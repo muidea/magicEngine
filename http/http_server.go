@@ -29,9 +29,10 @@ func NewHTTPServer(bindPort string, enableShareStatic bool) HTTPServer {
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
+
+	svr.staticOptions = &StaticOptions{Path: "static", PrefixUri: "static", ExcludeUri: "/api/"}
 	if enableShareStatic {
-		svr.staticOptions = &StaticOptions{Path: "static/share/", Prefix: "static/share/", Exclude: "/api/"}
-		svr.Use(&publicStatic{rootPath: Root})
+		svr.Use(&ShareStatic{rootPath: Root})
 	}
 
 	return svr

@@ -14,8 +14,8 @@ import (
 // StaticOptions 是指定静态文件服务配置选项的结构体
 type StaticOptions struct {
 	Path string
-	// Prefix 是用于提供静态目录内容的可选前缀
-	Prefix string
+	// PrefixUri 是用于提供静态目录内容的可选前缀
+	PrefixUri string
 	// SkipLogging 在提供静态文件时禁用 [Static] 日志消息
 	SkipLogging bool
 	// IndexFile 定义作为索引服务的文件（如果存在）
@@ -25,8 +25,8 @@ type StaticOptions struct {
 	Expires func() string
 	// Fallback 定义在找不到请求资源时提供默认 URL
 	Fallback string
-	// Exclude 定义此处理器不应处理的 URL 模式
-	Exclude string
+	// ExcludeUri 定义此处理器不应处理的 URL 模式
+	ExcludeUri string
 }
 
 func prepareStaticOptions(option *StaticOptions) StaticOptions {
@@ -37,27 +37,28 @@ func prepareStaticOptions(option *StaticOptions) StaticOptions {
 		opt.IndexFile = "index.html"
 	}
 	// 标准化提供的前缀
-	if opt.Prefix != "" {
+	if opt.PrefixUri != "" {
 		// 确保有前导 '/'
-		if opt.Prefix[0] != '/' {
-			opt.Prefix = "/" + opt.Prefix
+		if opt.PrefixUri[0] != '/' {
+			opt.PrefixUri = "/" + opt.PrefixUri
 		}
 		// 移除任何尾随 '/'
-		opt.Prefix = strings.TrimRight(opt.Prefix, "/")
+		opt.PrefixUri = strings.TrimRight(opt.PrefixUri, "/")
 	}
 	return opt
 }
 
-// publicStatic 静态文件处理器
-type publicStatic struct {
-	rootPath string
+// ShareStatic 静态文件处理器
+type ShareStatic struct {
+	rootPath  string
+	subPrefix string
 }
 
 // MiddleWareHandle 处理静态文件请求的中间件
-func (s *publicStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
+func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
-	staticObj := ctx.Context().Value(systemStatic{})
-	if staticObj == nil {
+	staticVal := ctx.Context().Value(systemStatic{})
+	if staticVal == nil {
 		panicInfo("无法获取静态处理器")
 	}
 
@@ -67,50 +68,51 @@ func (s *publicStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWri
 		}
 	}()
 
-	staticOpt := staticObj.(*StaticOptions)
+	staticOpt := staticVal.(*StaticOptions)
 
-	directory := staticOpt.Path
-	if !filepath.IsAbs(directory) {
-		directory = filepath.Join(s.rootPath, directory)
+	rootDirectory := staticOpt.Path
+	if !filepath.IsAbs(rootDirectory) {
+		rootDirectory = filepath.Join(s.rootPath, rootDirectory)
 	}
 	// 防止directory为相对路径
-	if !filepath.IsAbs(directory) {
-		directory = filepath.Join(Root, directory)
+	if !filepath.IsAbs(rootDirectory) {
+		rootDirectory = filepath.Join(Root, rootDirectory)
 	}
 
-	dir := http.Dir(directory)
+	dir := http.Dir(rootDirectory)
 	opt := prepareStaticOptions(staticOpt)
 
 	// 检查HTTP方法是否为GET或HEAD
-	if req.Method != "GET" && req.Method != "HEAD" {
+	if req.Method != GET && req.Method != HEAD {
 		err = fmt.Errorf("no matching http method found")
 		return
 	}
-	if opt.Exclude != "" && strings.HasPrefix(req.URL.Path, opt.Exclude) {
+	if opt.ExcludeUri != "" && strings.HasPrefix(req.URL.Path, opt.ExcludeUri) {
 		err = fmt.Errorf("the requested url was not found on this server")
 		return
 	}
 
-	file := req.URL.Path
+	fileUrI := req.URL.Path
 
 	// 如果有前缀，通过去掉前缀来过滤请求
-	if opt.Prefix != "" {
-		if !strings.HasPrefix(file, opt.Prefix) {
+	prefixUrl := filepath.Join(opt.PrefixUri, s.subPrefix)
+	if prefixUrl != "" {
+		if !strings.HasPrefix(fileUrI, prefixUrl) {
 			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
-		file = file[len(opt.Prefix):]
-		if file != "" && file[0] != '/' {
+		fileUrI = fileUrI[len(prefixUrl):]
+		if fileUrI != "" && fileUrI[0] != '/' {
 			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
 	}
 
-	staticFile, staticErr := dir.Open(file)
+	staticFile, staticErr := dir.Open(fileUrI)
 	if staticErr != nil {
 		// 在放弃之前尝试回退文件
 		if opt.Fallback != "" {
-			file = opt.Fallback // 保持日志记录的真实性
+			fileUrI = opt.Fallback // 保持日志记录的真实性
 			staticFile, staticErr = dir.Open(opt.Fallback)
 		}
 
@@ -141,8 +143,8 @@ func (s *publicStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWri
 			return
 		}
 
-		file = path.Join(file, opt.IndexFile)
-		staticFile, staticFileErr = dir.Open(file)
+		fileUrI = path.Join(fileUrI, opt.IndexFile)
+		staticFile, staticFileErr = dir.Open(fileUrI)
 		if staticFileErr != nil {
 			err = staticFileErr
 			return
@@ -161,7 +163,7 @@ func (s *publicStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWri
 	}
 
 	if !opt.SkipLogging {
-		log.Infof("[Static] Serving " + file)
+		log.Infof("[Static] Serving " + fileUrI)
 	}
 
 	// 为静态内容添加过期头
@@ -169,5 +171,5 @@ func (s *publicStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWri
 		res.Header().Set("Expires", opt.Expires())
 	}
 
-	http.ServeContent(res, req, file, staticFileInfo.ModTime(), staticFile)
+	http.ServeContent(res, req, fileUrI, staticFileInfo.ModTime(), staticFile)
 }
