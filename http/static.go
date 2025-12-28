@@ -11,54 +11,54 @@ import (
 	"github.com/muidea/magicCommon/foundation/log"
 )
 
-// StaticOptions is a struct for specifying configuration options for the martini.Static middleware.
+// StaticOptions 是指定静态文件服务配置选项的结构体
 type StaticOptions struct {
 	Path string
-	// Prefix is the optional prefix used to serve the static directory content
+	// Prefix 是用于提供静态目录内容的可选前缀
 	Prefix string
-	// SkipLogging will disable [Static] log messages when a static file is served.
+	// SkipLogging 在提供静态文件时禁用 [Static] 日志消息
 	SkipLogging bool
-	// IndexFile defines which file to serve as index if it exists.
+	// IndexFile 定义作为索引服务的文件（如果存在）
 	IndexFile string
-	// Expires defines which user-defined function to use for producing a HTTP Expires Header
+	// Expires 定义用于生成 HTTP Expires 头的用户自定义函数
 	// https://developers.google.com/speed/docs/insights/LeverageBrowserCaching
 	Expires func() string
-	// Fallback defines a default URL to serve when the requested resource was
-	// not found.
+	// Fallback 定义在找不到请求资源时提供默认 URL
 	Fallback string
-	// Exclude defines a pattern for URLs this handler should never process.
+	// Exclude 定义此处理器不应处理的 URL 模式
 	Exclude string
 }
 
 func prepareStaticOptions(option *StaticOptions) StaticOptions {
 	opt := *option
 
-	// Defaults
+	// 默认值
 	if len(opt.IndexFile) == 0 {
 		opt.IndexFile = "index.html"
 	}
-	// Normalize the prefix if provided
+	// 标准化提供的前缀
 	if opt.Prefix != "" {
-		// Ensure we have a leading '/'
+		// 确保有前导 '/'
 		if opt.Prefix[0] != '/' {
 			opt.Prefix = "/" + opt.Prefix
 		}
-		// Remove any trailing '/'
+		// 移除任何尾随 '/'
 		opt.Prefix = strings.TrimRight(opt.Prefix, "/")
 	}
 	return opt
 }
 
+// static 静态文件处理器
 type static struct {
 	rootPath string
 }
 
-// Static returns a middleware handler that serves static files in the given directory.
+// MiddleWareHandle 处理静态文件请求的中间件
 func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
 	staticObj := ctx.Context().Value(systemStatic{})
 	if staticObj == nil {
-		panicInfo("cant\\'t get static handler")
+		panicInfo("无法获取静态处理器")
 	}
 
 	defer func() {
@@ -81,6 +81,7 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 	dir := http.Dir(directory)
 	opt := prepareStaticOptions(staticOpt)
 
+	// 检查HTTP方法是否为GET或HEAD
 	if req.Method != "GET" && req.Method != "HEAD" {
 		err = fmt.Errorf("no matching http method found")
 		return
@@ -92,7 +93,7 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 
 	file := req.URL.Path
 
-	// if we have a prefix, filter requests by stripping the prefix
+	// 如果有前缀，通过去掉前缀来过滤请求
 	if opt.Prefix != "" {
 		if !strings.HasPrefix(file, opt.Prefix) {
 			err = fmt.Errorf("the requested url was not found on this server")
@@ -107,14 +108,14 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 
 	staticFile, staticErr := dir.Open(file)
 	if staticErr != nil {
-		// try any fallback before giving up
+		// 在放弃之前尝试回退文件
 		if opt.Fallback != "" {
-			file = opt.Fallback // so that logging stays true
+			file = opt.Fallback // 保持日志记录的真实性
 			staticFile, staticErr = dir.Open(opt.Fallback)
 		}
 
 		if staticErr != nil {
-			// discard the error?
+			// 丢弃错误？
 			err = staticErr
 			return
 		}
@@ -127,9 +128,9 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 		return
 	}
 
-	// try to serve index file
+	// 尝试提供索引文件
 	if staticFileInfo.IsDir() {
-		// redirect if missing trailing slash
+		// 如果缺少尾随斜杠则重定向
 		if !strings.HasSuffix(req.URL.Path, "/") {
 			dest := url.URL{
 				Path:     req.URL.Path + "/",
@@ -163,7 +164,7 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 		log.Infof("[Static] Serving " + file)
 	}
 
-	// Add an Expires header to the static content
+	// 为静态内容添加过期头
 	if opt.Expires != nil {
 		res.Header().Set("Expires", opt.Expires())
 	}
