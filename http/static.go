@@ -48,13 +48,13 @@ func prepareStaticOptions(option *StaticOptions) StaticOptions {
 	return opt
 }
 
-// static 静态文件处理器
-type static struct {
+// publicStatic 静态文件处理器
+type publicStatic struct {
 	rootPath string
 }
 
 // MiddleWareHandle 处理静态文件请求的中间件
-func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
+func (s *publicStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
 	staticObj := ctx.Context().Value(systemStatic{})
 	if staticObj == nil {
