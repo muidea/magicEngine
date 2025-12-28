@@ -23,13 +23,13 @@ type httpServer struct {
 }
 
 // NewHTTPServer 新建HTTPServer
-func NewHTTPServer(bindPort string, enableStatic bool) HTTPServer {
+func NewHTTPServer(bindPort string, enableStaticShare bool) HTTPServer {
 	listenAddr := fmt.Sprintf(":%s", bindPort)
 	svr := &httpServer{listenAddr: listenAddr, middlewareChains: NewMiddleWareChains()}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
-	if enableStatic {
+	if enableStaticShare {
 		svr.staticOptions = &StaticOptions{Path: "static/share/", Prefix: "static/share/", Exclude: "/api/"}
 		svr.Use(&publicStatic{rootPath: Root})
 	}
