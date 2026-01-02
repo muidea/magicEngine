@@ -54,16 +54,16 @@ func prepareStaticOptions(option *StaticOptions) StaticOptions {
 
 func NewShareStatic(rootPath string) *ShareStatic {
 	return &ShareStatic{
-		rootPath:  rootPath,
-		subPrefix: share,
+		rootPath:     rootPath,
+		subPrefixUri: share,
 	}
 }
 
 func NewPrivateStatic(rootPath string, verifier Verifier) *PrivateStatic {
 	return &PrivateStatic{
 		ShareStatic: ShareStatic{
-			rootPath:  rootPath,
-			subPrefix: private,
+			rootPath:     rootPath,
+			subPrefixUri: private,
 		},
 		verifier: verifier,
 	}
@@ -71,8 +71,8 @@ func NewPrivateStatic(rootPath string, verifier Verifier) *PrivateStatic {
 
 // ShareStatic 静态文件处理器
 type ShareStatic struct {
-	rootPath  string
-	subPrefix string
+	rootPath     string
+	subPrefixUri string
 }
 
 // MiddleWareHandle 处理静态文件请求的中间件
@@ -113,27 +113,27 @@ func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 		return
 	}
 
-	fileUrI := req.URL.Path
+	fileUri := req.URL.Path
 
 	// 如果有前缀，通过去掉前缀来过滤请求
-	prefixUrl := filepath.Join(opt.PrefixUri, s.subPrefix)
+	prefixUrl := filepath.Join(opt.PrefixUri, s.subPrefixUri)
 	if prefixUrl != "" {
-		if !strings.HasPrefix(fileUrI, prefixUrl) {
+		if !strings.HasPrefix(fileUri, prefixUrl) {
 			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
-		fileUrI = fileUrI[len(opt.PrefixUri):]
-		if fileUrI != "" && fileUrI[0] != '/' {
+		fileUri = fileUri[len(opt.PrefixUri):]
+		if fileUri != "" && fileUri[0] != '/' {
 			err = fmt.Errorf("the requested url was not found on this server")
 			return
 		}
 	}
 
-	staticFile, staticErr := dir.Open(fileUrI)
+	staticFile, staticErr := dir.Open(fileUri)
 	if staticErr != nil {
 		// 在放弃之前尝试回退文件
 		if opt.Fallback != "" {
-			fileUrI = opt.Fallback // 保持日志记录的真实性
+			fileUri = opt.Fallback // 保持日志记录的真实性
 			staticFile, staticErr = dir.Open(opt.Fallback)
 		}
 
@@ -164,8 +164,8 @@ func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 			return
 		}
 
-		fileUrI = path.Join(fileUrI, opt.IndexFile)
-		staticFile, staticFileErr = dir.Open(fileUrI)
+		fileUri = path.Join(fileUri, opt.IndexFile)
+		staticFile, staticFileErr = dir.Open(fileUri)
 		if staticFileErr != nil {
 			err = staticFileErr
 			return
@@ -184,7 +184,7 @@ func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 	}
 
 	if !opt.SkipLogging {
-		log.Infof("[Static] Serving " + fileUrI)
+		log.Infof("[Static] Serving " + fileUri)
 	}
 
 	// 为静态内容添加过期头
@@ -192,7 +192,7 @@ func (s *ShareStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 		res.Header().Set("Expires", opt.Expires())
 	}
 
-	http.ServeContent(res, req, fileUrI, staticFileInfo.ModTime(), staticFile)
+	http.ServeContent(res, req, fileUri, staticFileInfo.ModTime(), staticFile)
 }
 
 type PrivateStatic struct {
