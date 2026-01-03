@@ -20,9 +20,9 @@ var Root string
 var enableTrace = false
 var elapseThreshold = 10 * time.Second
 
-func setENV(e string) {
-	if len(e) > 0 {
-		Env = e
+func setENV(env string) {
+	if len(env) > 0 {
+		Env = env
 	}
 }
 
