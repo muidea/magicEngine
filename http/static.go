@@ -193,6 +193,13 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 	opt := prepareStaticOptions(staticOpt)
 	uriFilePath := req.URL.Path
 
+	if !strings.HasPrefix(uriFilePath, opt.PrefixUri) {
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	uriFilePath = uriFilePath[len(opt.PrefixUri):]
+
 	var err error
 	var staticFileHandle http.File
 
