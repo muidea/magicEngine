@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/muidea/magicCommon/foundation/helper"
 	"github.com/muidea/magicCommon/foundation/log"
 )
 
@@ -58,8 +59,8 @@ type static struct {
 // MiddleWareHandle 处理静态文件请求的中间件
 func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
 	var err error
-	staticVal := ctx.Context().Value(systemStatic{})
-	if staticVal == nil {
+	staticOpt, staticOK := helper.GetValueFromContext[*StaticOptions](ctx.Context(), StaticOptionsKey{})
+	if !staticOK {
 		panicInfo("无法获取静态处理器")
 	}
 
@@ -68,8 +69,6 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 			ctx.Next()
 		}
 	}()
-
-	staticOpt := staticVal.(*StaticOptions)
 
 	rootDirectory := staticOpt.RootPath
 	if !filepath.IsAbs(rootDirectory) {
@@ -176,12 +175,10 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 }
 
 func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	staticVal := ctx.Value(systemStatic{})
-	if staticVal == nil {
+	staticOpt, staticOK := helper.GetValueFromContext[*StaticOptions](ctx, StaticOptionsKey{})
+	if !staticOK {
 		panicInfo("无法获取静态处理器")
 	}
-
-	staticOpt := staticVal.(*StaticOptions)
 
 	rootDirectory := staticOpt.RootPath
 	// 防止directory为相对路径

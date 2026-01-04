@@ -25,6 +25,7 @@ github.com/leodido/go-urn/scim/schema
 ## explicit; go 1.24
 github.com/muidea/magicCommon/def
 github.com/muidea/magicCommon/execute
+github.com/muidea/magicCommon/foundation/helper
 github.com/muidea/magicCommon/foundation/log
 github.com/muidea/magicCommon/foundation/net
 github.com/muidea/magicCommon/foundation/util

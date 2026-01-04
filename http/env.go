@@ -13,6 +13,10 @@ const (
 	Test string = "test"
 )
 
+const serverName = "magic_engine"
+
+type StaticOptionsKey struct{}
+
 var Env = Dev
 
 var Root string
