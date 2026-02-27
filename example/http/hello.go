@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
-	"github.com/muidea/magicCommon/foundation/log"
 	engine "github.com/muidea/magicEngine/http"
 )
+
+// helloKey is a type-safe key for context values
+type helloKey struct{}
 
 // MiddleWareHello hello middleware
 type MiddleWareHello struct {
@@ -17,14 +20,14 @@ type MiddleWareHello struct {
 func (s *MiddleWareHello) MiddleWareHandle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
 	curCtx := ctx.Context()
 
-	log.Infof("MiddleWareHello Handle, index:%d,curValue:%v", s.Index, curCtx.Value("hello"))
-	newCtx := context.WithValue(curCtx, "hello", "1234")
+	slog.Info("middleware hello handle", "index", s.Index, "cur_value", curCtx.Value(helloKey{}))
+	newCtx := context.WithValue(curCtx, helloKey{}, "1234")
 	ctx.Update(newCtx)
 
 	ctx.Next()
 
 	ctx.Update(curCtx)
-	log.Infof("MiddleWareHello Handle, index:%d", s.Index)
+	slog.Info("middleware hello handle completed", "index", s.Index)
 }
 
 // HelloMiddleWareRoute hello middleware
@@ -34,16 +37,16 @@ type HelloMiddleWareRoute struct {
 
 // MiddleWareHandle handle request
 func (s *HelloMiddleWareRoute) MiddleWareHandle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
-	log.Infof("MiddleWareHello Route Handle before, index:%d", s.Index)
+	slog.Info("middleware hello route handle before", "index", s.Index)
 
 	curCtx := ctx.Context()
 
-	log.Infof("index:%d,curValue:%v", s.Index, curCtx.Value("hello"))
-	newCtx := context.WithValue(curCtx, "hello", "abcd")
+	slog.Info("middleware hello route context", "index", s.Index, "cur_value", curCtx.Value(helloKey{}))
+	newCtx := context.WithValue(curCtx, helloKey{}, "abcd")
 	ctx.Update(newCtx)
 
 	ctx.Next()
 
 	ctx.Update(curCtx)
-	log.Infof("MiddleWareHello Route Handle after, index:%d", s.Index)
+	slog.Info("middleware hello route handle after", "index", s.Index)
 }

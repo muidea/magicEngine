@@ -3,9 +3,8 @@ package http
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
-
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 // HTTPServer HTTPServer
@@ -54,7 +53,7 @@ func (s *httpServer) Bind(routeRegistry RouteRegistry) {
 }
 
 func (s *httpServer) Run() {
-	log.Infof("listening on %s", s.listenAddr)
+	slog.Info("server listening", "addr", s.listenAddr)
 	err := http.ListenAndServe(s.listenAddr, s)
-	log.Criticalf("run httpserver fatal, err:%s", err.Error())
+	slog.Error("server fatal error", "err", err)
 }

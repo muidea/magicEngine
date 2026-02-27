@@ -78,14 +78,14 @@ func (c *SSEClient) Connect(ctx context.Context) {
 			}
 
 			if resp.StatusCode != 200 {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				retryCount = c.handleRetry(retryCount)
 				continue
 			}
 
 			retryCount = 0 // 重置重试计数器
 			c.processStream(ctx, resp)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 	}
 }

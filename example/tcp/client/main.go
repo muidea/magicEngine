@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/muidea/magicCommon/foundation/log"
 	"github.com/muidea/magicCommon/foundation/util"
 	"github.com/muidea/magicEngine/tcp"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,18 +20,18 @@ type Echo struct {
 }
 
 func (s *Echo) OnConnect(ep tcp.Endpoint) {
-	log.Infof("connect ok, server:%s", ep.RemoteAddr().String())
+	slog.Info("connect ok", "server", ep.RemoteAddr().String())
 }
 
 func (s *Echo) OnDisConnect(ep tcp.Endpoint) {
-	log.Infof("disconnect, server:%s", ep.RemoteAddr().String())
+	slog.Info("disconnect", "server", ep.RemoteAddr().String())
 }
 
 func (s *Echo) OnRecvData(ep tcp.Endpoint, data []byte) {
 	dataSize := len(data)
 	s.recvCount++
 	s.recvSize += dataSize
-	log.Infof("recv data from:%s, recvCount:%d, size:%d", ep.RemoteAddr().String(), s.recvCount, dataSize)
+	slog.Info("recv data", "from", ep.RemoteAddr().String(), "recvCount", s.recvCount, "size", dataSize)
 }
 
 func (s *Echo) Dump() {
@@ -40,7 +40,7 @@ func (s *Echo) Dump() {
 		s.sendSize,
 		s.recvCount,
 		s.recvSize)
-	log.Infof(msg)
+	slog.Info("dump stats", "msg", msg)
 }
 
 var serverAddr = "127.0.0.1:8080"
@@ -68,7 +68,7 @@ func main() {
 	clnt := tcp.NewClient(echo)
 	err := clnt.Connect(serverAddr)
 	if err != nil {
-		log.Errorf("connect %s failed, error:%s", serverAddr, err.Error())
+		slog.Error("connect failed", "server", serverAddr, "err", err)
 		return
 	}
 	defer clnt.Close()
@@ -81,7 +81,7 @@ func main() {
 
 		err = clnt.SendData([]byte(sendMsg))
 		if err != nil {
-			log.Errorf("sendData failed, error:%s", err.Error())
+			slog.Error("sendData failed", "err", err)
 			continue
 		}
 

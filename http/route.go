@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 // 基本HTTP行为定义
@@ -155,7 +153,7 @@ func newRouteItem(versionPrefix string, rt Route, filters ...MiddleWareHandler) 
 	}
 	item.patternFilter = NewPatternFilter(rtPattern)
 
-	log.Infof("[%s]:%s", rt.Method(), rtPattern)
+	// log.Infof("[%s]:%s", rt.Method(), rtPattern)
 
 	return item
 }

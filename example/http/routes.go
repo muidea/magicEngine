@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	cd "github.com/muidea/magicCommon/def"
-	"github.com/muidea/magicCommon/foundation/log"
 	fn "github.com/muidea/magicCommon/foundation/net"
 	engine "github.com/muidea/magicEngine/http"
 )
@@ -35,12 +35,12 @@ func (s *getRoute) Handler() engine.RouteHandleFunc {
 }
 
 func (s *getRoute) getDemo(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	log.Infof(req.URL.String())
-	log.Infof("getDemo....， url:%s", req.URL.String())
-	log.Infof("hello=%v", ctx.Value("hello"))
+	slog.Info("get route request", "url", req.URL.String())
+	slog.Info("get demo", "url", req.URL.String())
+	slog.Info("context value", "hello", ctx.Value(helloKey{}))
 	//res.WriteHeader(http.StatusOK)
 	contentType := res.Header().Get("Content-Type")
-	log.Infof("contentType:%s", contentType)
+	slog.Info("content type", "type", contentType)
 
 	fn.PackageHTTPResponseWithStatusCode(res, 200, cd.NewError(cd.Unexpected, "test"))
 	//fn.PackageHTTPResponse(res, cd.NewError(cd.Unexpected, "test"))
@@ -65,10 +65,10 @@ func (s *getRoute2) Handler() engine.RouteHandleFunc {
 }
 
 func (s *getRoute2) getDemo(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	log.Infof(req.URL.String())
-	log.Infof("getDemo2....")
-	log.Infof("hello=%v", ctx.Value("hello"))
+	slog.Info("get route2 request", "url", req.URL.String())
+	slog.Info("get demo2")
+	slog.Info("context value", "hello", ctx.Value(helloKey{}))
 	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.Write([]byte("getDemo...."))
+	_, _ = res.Write([]byte("getDemo...."))
 }

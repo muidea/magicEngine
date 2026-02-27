@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/muidea/magicCommon/foundation/log"
+	"log/slog"
 )
 
 type Client struct {
@@ -50,7 +50,7 @@ func (s *Client) Close() {
 func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
-		log.Errorf("parse url failed, err:%s", urlErr)
+		slog.Error("parse url failed", "err", urlErr.Error())
 		return urlErr
 	}
 
@@ -75,7 +75,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) 
 		requestVal, requestErr := http.NewRequestWithContext(clientCtx, http.MethodGet, urlVal.String(), nil)
 		if requestErr != nil {
 			err = requestErr
-			log.Errorf("new request failed, err:%s", err)
+			slog.Error("new request failed", "err", err)
 			return
 		}
 
@@ -90,10 +90,12 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) 
 		responseVal, responseErr := http.DefaultClient.Do(requestVal)
 		if responseErr != nil {
 			err = responseErr
-			log.Errorf("do request failed, err:%s", err)
+			slog.Error("do request failed", "err", err)
 			return
 		}
-		defer responseVal.Body.Close()
+		defer func() {
+			_ = responseVal.Body.Close()
+		}()
 
 		if responseVal.StatusCode != http.StatusOK {
 			err = fmt.Errorf("request failed, status:%d", responseVal.StatusCode)
@@ -114,7 +116,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) 
 			if err = actionFunc(); err != nil {
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
-					log.Errorf("handle retry failed, err:%s", retryErr)
+					slog.Error("handle retry failed", "err", retryErr.Error())
 					sink.OnClose()
 
 					return err
@@ -124,7 +126,6 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) 
 				continue
 			}
 
-			retryCount = 0
 			return err
 		}
 	}
@@ -133,7 +134,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) 
 func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, sink StreamSinker) error {
 	urlVal, urlErr := url.ParseRequestURI(s.serverURI)
 	if urlErr != nil {
-		log.Errorf("parse url failed, err:%s", urlErr)
+		slog.Error("parse url failed", "err", urlErr.Error())
 		return urlErr
 	}
 
@@ -163,7 +164,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 		requestVal, requestErr := http.NewRequestWithContext(clientCtx, http.MethodPost, urlVal.String(), byteBuff)
 		if requestErr != nil {
 			err = requestErr
-			log.Errorf("new request failed, err:%s", err)
+			slog.Error("new request failed", "err", err)
 			return
 		}
 		for k, v := range header {
@@ -177,16 +178,18 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 		responseVal, responseErr := http.DefaultClient.Do(requestVal)
 		if responseErr != nil {
 			err = responseErr
-			log.Errorf("do request failed, err:%s", err)
+			slog.Error("do request failed", "err", err)
 			return
 		}
-		defer responseVal.Body.Close()
+		defer func() {
+			_ = responseVal.Body.Close()
+		}()
 
 		if responseVal.StatusCode != http.StatusOK {
 			contentVal, contentErr := io.ReadAll(responseVal.Body)
 			if contentErr != nil {
 				err = contentErr
-				log.Errorf("read content failed, err:%s", err)
+				slog.Error("read content failed", "err", err)
 				return
 			}
 
@@ -203,15 +206,15 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 		select {
 		case <-ctx.Done():
 			err := ctx.Err()
-			log.Errorf("action failed, serverUrl:%s, context err:%v", s.serverURI, err)
+			slog.Error("action failed, serverUrl", "serverUrl", s.serverURI, "err", err)
 			return err
 		default:
 			var err error
 			if err = actionFunc(); err != nil {
-				log.Errorf("action failed, serverUrl:%s, err:%v", s.serverURI, err)
+				slog.Error("action failed, serverUrl", "serverUrl", s.serverURI, "err", err)
 				retryVal, retryErr := s.handleRetry(retryCount)
 				if retryErr != nil {
-					log.Errorf("handle retry failed, err:%s", retryErr)
+					slog.Error("handle retry failed", "err", retryErr.Error())
 					sink.OnClose()
 					return err
 				}
@@ -220,7 +223,6 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 				continue
 			}
 
-			retryCount = 0
 			return err
 		}
 	}
@@ -261,7 +263,7 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink StreamSi
 			byteVal, byteErr := reader.ReadBytes('\n')
 			if byteErr != nil {
 				if byteErr != io.EOF {
-					log.Errorf("read bytes error: %v", byteErr)
+					slog.Error("read bytes error", "err", byteErr)
 					err = byteErr
 				}
 				// 这里不用返回错误，直接结束就可以了

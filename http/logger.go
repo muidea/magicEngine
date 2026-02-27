@@ -1,11 +1,10 @@
 package http
 
 import (
+	"log/slog"
 	"net/http"
 	"sync/atomic"
 	"time"
-
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 type logger struct {
@@ -25,7 +24,7 @@ func (s *logger) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 
 	curSerial := atomic.AddInt64(&s.serialNo, 1)
 	if EnableTrace() {
-		log.Infof("Started-%05d %s %s for %s", curSerial, req.Method, req.URL.Path, addr)
+		slog.Info("request started", "serial", curSerial, "method", req.Method, "path", req.URL.Path, "addr", addr)
 	}
 
 	rw := res.(ResponseWriter)
@@ -33,8 +32,8 @@ func (s *logger) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 
 	elapseVal := time.Since(start)
 	if EnableTrace() {
-		log.Infof("Completed-%05d %v %s in %v", curSerial, rw.Status(), http.StatusText(rw.Status()), elapseVal)
+		slog.Info("request completed", "serial", curSerial, "status", rw.Status(), "status_text", http.StatusText(rw.Status()), "elapsed", elapseVal)
 	} else if elapseVal >= GetElapseThreshold() {
-		log.Warnf("Handle-%05d %s %s for %s %v in %v", curSerial, req.Method, req.URL.Path, addr, rw.Status(), elapseVal)
+		slog.Warn("slow request", "serial", curSerial, "method", req.Method, "path", req.URL.Path, "addr", addr, "status", rw.Status(), "elapsed", elapseVal)
 	}
 }

@@ -29,12 +29,8 @@ github.com/leodido/go-urn/scim/schema
 github.com/muidea/magicCommon/def
 github.com/muidea/magicCommon/execute
 github.com/muidea/magicCommon/foundation/helper
-github.com/muidea/magicCommon/foundation/log
 github.com/muidea/magicCommon/foundation/net
 github.com/muidea/magicCommon/foundation/util
-# github.com/muidea/seelog v1.0.0
-## explicit
-github.com/muidea/seelog
 # golang.org/x/crypto v0.46.0
 ## explicit; go 1.24.0
 golang.org/x/crypto/sha3

@@ -3,11 +3,10 @@ package http
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"runtime"
-
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 const (
@@ -105,7 +104,7 @@ func function(pc uintptr) []byte {
 	if period := bytes.Index(name, dot); period >= 0 {
 		name = name[period+1:]
 	}
-	name = bytes.Replace(name, centerDot, dot, -1)
+	name = bytes.ReplaceAll(name, centerDot, dot)
 	return name
 }
 
@@ -118,7 +117,7 @@ func (s *recovery) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter,
 	defer func() {
 		if err := recover(); err != nil {
 			stack := stack(3)
-			log.Errorf("PANIC: %s\n%s", err, stack)
+			slog.Error("panic recovered", "err", err, "stack", string(stack))
 
 			// respond with panic message while in development mode
 			var body []byte
@@ -131,7 +130,7 @@ func (s *recovery) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter,
 
 			res.WriteHeader(http.StatusInternalServerError)
 			if nil != body {
-				res.Write(body)
+				_, _ = res.Write(body)
 			}
 		}
 	}()

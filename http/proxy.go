@@ -2,12 +2,11 @@ package http
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
-
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 // newReverseProxy 创建一个新的反向代理，将请求转发到指定的目标URL
@@ -55,7 +54,7 @@ func (s *proxyRoute) proxyFun(_ context.Context, res http.ResponseWriter, req *h
 	// 解析目标URL
 	targetUri, err := url.Parse(s.targetURL)
 	if err != nil {
-		log.Criticalf("illegal proxy target URL, url:%s", s.targetURL)
+		slog.Error("illegal proxy target URL", "url", s.targetURL, "err", ErrInvalidProxyTarget)
 		return
 	}
 

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
 
-	"github.com/muidea/magicCommon/foundation/log"
 	engine "github.com/muidea/magicEngine/http"
 )
 
@@ -14,8 +14,8 @@ type Test struct {
 
 // Handle handle request
 func (s *Test) Handle(ctx engine.RequestContext, res http.ResponseWriter, req *http.Request) {
-	log.Infof("Test Handle, index:%d", s.Index)
+	slog.Info("test handle", "index", s.Index)
 	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.Write([]byte("test world"))
+	_, _ = res.Write([]byte("test world"))
 }

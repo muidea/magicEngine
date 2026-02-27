@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/muidea/magicCommon/execute"
-	"github.com/muidea/magicCommon/foundation/log"
+	"log/slog"
 )
 
 type Endpoint interface {
@@ -150,10 +150,12 @@ func (s *endpointImpl) RecvData() (err error) {
 	buffer := make([]byte, buffSize)
 	for {
 		readSize, readErr := reader.Read(buffer)
-		if readErr != nil && readErr != io.EOF {
-			log.Errorf("recv data failed, error:%s", readErr.Error())
-			err = readErr
-			break
+		if readErr != nil {
+			if readErr == io.EOF {
+				break
+			}
+			slog.Error("recv data failed", "err", readErr)
+			return readErr
 		}
 
 		if s.observer != nil && readSize > 0 {

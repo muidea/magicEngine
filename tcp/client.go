@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/muidea/magicCommon/execute"
-	"github.com/muidea/magicCommon/foundation/log"
+	"log/slog"
 )
 
 type Client interface {
@@ -30,7 +30,7 @@ func NewClient(ob Observer) Client {
 func (s *clientImpl) Connect(serverAddr string) (err error) {
 	connVal, connErr := net.Dial("tcp", serverAddr)
 	if connErr != nil {
-		log.Errorf("connect %s failed, error:%s", serverAddr, connErr.Error())
+		slog.Error("connect %s failed, error:%s", serverAddr, connErr.Error())
 		err = connErr
 		return
 	}
@@ -42,8 +42,8 @@ func (s *clientImpl) Connect(serverAddr string) (err error) {
 	implPtr := newEndpoint(connVal, s.observer)
 	s.endpoint = implPtr
 
-	s.Execute.Run(func() {
-		log.Infof("connect remote server %s ok", serverAddr)
+	s.Run(func() {
+		slog.Info("connect remote server ok", "addr", serverAddr)
 		defer implPtr.Close()
 		_ = implPtr.RecvData()
 	})

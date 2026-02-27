@@ -2,7 +2,7 @@ package http
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/muidea/magicCommon/foundation/helper"
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 // StaticOptions 是指定静态文件服务配置选项的结构体
@@ -84,11 +83,11 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 
 	// 检查HTTP方法是否为GET或HEAD
 	if req.Method != GET && req.Method != HEAD {
-		err = fmt.Errorf("no matching http method found")
+		err = ErrMethodNotAllowed
 		return
 	}
 	if opt.ExcludeUri != "" && strings.HasPrefix(req.URL.Path, opt.ExcludeUri) {
-		err = fmt.Errorf("the requested url was not found on this server")
+		err = ErrURLNotFound
 		return
 	}
 
@@ -98,12 +97,12 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 	prefixUrl := filepath.Join(opt.PrefixUri, s.subPrefixUri)
 	if prefixUrl != "" {
 		if !strings.HasPrefix(fileUri, prefixUrl) {
-			err = fmt.Errorf("the requested url was not found on this server")
+			err = ErrURLNotFound
 			return
 		}
 		fileUri = fileUri[len(opt.PrefixUri):]
 		if fileUri != "" && fileUri[0] != '/' {
-			err = fmt.Errorf("the requested url was not found on this server")
+			err = ErrURLNotFound
 			return
 		}
 	}
@@ -122,7 +121,9 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 			return
 		}
 	}
-	defer staticFile.Close()
+	defer func() {
+		_ = staticFile.Close()
+	}()
 
 	staticFileInfo, staticFileErr := staticFile.Stat()
 	if staticFileErr != nil {
@@ -149,7 +150,9 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 			err = staticFileErr
 			return
 		}
-		defer staticFile.Close()
+		defer func() {
+			_ = staticFile.Close()
+		}()
 
 		staticFileInfo, staticFileErr = staticFile.Stat()
 		if staticFileErr != nil {
@@ -157,13 +160,13 @@ func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, r
 			return
 		}
 		if staticFileInfo.IsDir() {
-			err = fmt.Errorf("the requested url was not found on this server")
+			err = ErrURLNotFound
 			return
 		}
 	}
 
 	if !opt.SkipLogging {
-		log.Infof("[Static] Serving " + fileUri)
+		slog.Info("serving static file", "uri", fileUri)
 	}
 
 	// 为静态内容添加过期头
@@ -203,11 +206,11 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 	staticUriFileHandle, staticUriFileErr := dir.Open(uriFilePath)
 	defer func() {
 		if staticUriFileHandle != nil {
-			staticUriFileHandle.Close()
+			_ = staticUriFileHandle.Close()
 		}
 
 		if err != nil {
-			log.Warnf("[Static] Failed to serve %s: %v", uriFilePath, err)
+			slog.Warn("failed to serve static file", "path", uriFilePath, "err", err)
 			res.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -238,7 +241,7 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 	// 尝试提供索引文件
 	if staticFileInfo.IsDir() {
 		if opt.IndexFile == "" {
-			err = fmt.Errorf("the requested url was not found on this server")
+			err = ErrURLNotFound
 			return
 		}
 
@@ -259,7 +262,9 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 			err = staticIndexFileErr
 			return
 		}
-		defer staticIndexFileHandle.Close()
+		defer func() {
+			_ = staticIndexFileHandle.Close()
+		}()
 
 		staticFileInfo, staticFileErr = staticIndexFileHandle.Stat()
 		if staticFileErr != nil {
@@ -267,7 +272,7 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 			return
 		}
 		if staticFileInfo.IsDir() {
-			err = fmt.Errorf("the requested url was not found on this server")
+			err = ErrURLNotFound
 			return
 		}
 

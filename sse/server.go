@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/muidea/magicCommon/foundation/log"
 	pu "github.com/muidea/magicCommon/foundation/util"
+	"log/slog"
 )
 
 const (
@@ -66,13 +66,13 @@ func (s *Holder) OnRecv(event string, data []byte) {
 	if event != "" {
 		_, err = s.httpResponseWriter.Write([]byte("event: " + event + "\n"))
 		if err != nil {
-			log.Errorf("write event failed, err:%s", err)
+			slog.Error("write event failed", "err", err)
 			return
 		}
 	}
 	_, err = s.httpResponseWriter.Write([]byte("data: " + string(data) + "\n"))
 	if err != nil {
-		log.Errorf("write data failed, err:%s", err)
+		slog.Error("write data failed", "err", err)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (s *Holder) heartbeat() (err error) {
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	_, err = s.httpResponseWriter.Write([]byte(": ping\n"))
 	if err != nil {
-		log.Errorf("write heartbeat failed, err:%s", err)
+		slog.Error("write heartbeat failed", "err", err)
 		return
 	}
 
@@ -131,7 +131,7 @@ func (s *Holder) EchoSSEID() (err error) {
 	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
 	_, err = s.httpResponseWriter.Write(fmt.Appendf(nil, "event: sseID\ndata: %s\n\n", s.sseID))
 	if err != nil {
-		log.Errorf("write heartbeat failed, err:%s", err)
+		slog.Error("write heartbeat failed", "err", err)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (s *Holder) Run(taskFunc func() error) error {
 				s.syncMutexPtr.Unlock()
 
 				if time.Since(lastActive) > timerTimeout {
-					s.heartbeat()
+					_ = s.heartbeat()
 				}
 			default:
 				if taskOK {

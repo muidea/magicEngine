@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"embed"
-	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -11,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/muidea/magicCommon/foundation/log"
 )
 
 type EmbedFile struct {
@@ -27,13 +24,42 @@ type EmbedStatic struct {
 	staticFileInfo sync.Map
 }
 
-func NewEmbedStatic(templateFS embed.FS, embedPath, prefixPath string) *EmbedStatic {
-	return &EmbedStatic{
-		embedPath:      embedPath,
-		prefixPath:     prefixPath,
+// EmbedStaticOption configures an EmbedStatic
+type EmbedStaticOption func(*EmbedStatic)
+
+// WithPrefixPath sets the prefix path for static files
+func WithPrefixPath(path string) EmbedStaticOption {
+	return func(es *EmbedStatic) {
+		es.prefixPath = path
+	}
+}
+
+// WithEmbedPath sets the embed path for static files
+func WithEmbedPath(path string) EmbedStaticOption {
+	return func(es *EmbedStatic) {
+		es.embedPath = path
+	}
+}
+
+// NewEmbedStatic creates a new EmbedStatic with optional configuration
+func NewEmbedStatic(templateFS embed.FS, opts ...EmbedStaticOption) *EmbedStatic {
+	es := &EmbedStatic{
 		templateFS:     templateFS,
+		embedPath:      ".",       // default embed path
+		prefixPath:     "/static", // default prefix path
 		staticFileInfo: sync.Map{},
 	}
+
+	for _, opt := range opts {
+		opt(es)
+	}
+
+	return es
+}
+
+// NewEmbedStaticWithPath creates a new EmbedStatic with explicit paths (backward compatibility)
+func NewEmbedStaticWithPath(templateFS embed.FS, embedPath, prefixPath string) *EmbedStatic {
+	return NewEmbedStatic(templateFS, WithEmbedPath(embedPath), WithPrefixPath(prefixPath))
 }
 
 func (s *EmbedStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
@@ -50,16 +76,16 @@ func (s *EmbedStatic) MiddleWareHandle(ctx RequestContext, res http.ResponseWrit
 	}
 
 	if req.Method != "GET" && req.Method != "HEAD" {
-		err = fmt.Errorf("no matching http method found")
-		log.Errorf("static middleware, url:%s, error: %v", req.URL.Path, err)
+		err = ErrMethodNotAllowed
+		// log.Errorf("static middleware, url:%s, error: %v", req.URL.Path, err)
 		return
 	}
 
 	filePath := s.validatePath(req.URL.Path)
 	staticFile, staticModTime, staticErr := s.findEmbedFile(filePath)
 	if staticErr != nil {
-		err = fmt.Errorf("find embed file failed, filePath:%s, error: %v", filePath, staticErr)
-		log.Errorf("static middleware, url:%s, error: %v", req.URL.Path, err)
+		err = NewStaticError(filePath, staticErr)
+		// log.Errorf("static middleware, url:%s, error: %v", req.URL.Path, err)
 		return
 	}
 

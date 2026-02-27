@@ -4,7 +4,7 @@ import (
 	"net"
 
 	"github.com/muidea/magicCommon/execute"
-	"github.com/muidea/magicCommon/foundation/log"
+	"log/slog"
 )
 
 type Server interface {
@@ -30,21 +30,23 @@ func NewServer(sink ServerSink, executePtr *execute.Execute) Server {
 func (s *serverImpl) Run(bindAddr string) (err error) {
 	listenerVal, listenerErr := net.Listen("tcp", bindAddr)
 	if listenerErr != nil {
-		log.Errorf("listen %s failed, error:%s", bindAddr, listenerErr.Error())
+		slog.Error("listen failed", "addr", bindAddr, "err", listenerErr)
 		err = listenerErr
 		return
 	}
-	defer listenerVal.Close()
+	defer func() {
+		_ = listenerVal.Close()
+	}()
 
-	log.Infof("TCP Server started. Listening on %s", bindAddr)
+	slog.Info("TCP server started", "addr", bindAddr)
 	for {
 		connVal, connErr := listenerVal.Accept()
 		if connErr != nil {
-			log.Errorf("accept new connect failed, error:%s", connErr.Error())
+			slog.Error("accept new connection failed", "err", connErr)
 			continue
 		}
 
-		log.Infof("accept new connect, from:%s", connVal.RemoteAddr().String())
+		slog.Info("accepted new connection", "from", connVal.RemoteAddr().String())
 		s.executePtr.Run(func() {
 			if s.serverSink == nil {
 				_ = connVal.Close()
