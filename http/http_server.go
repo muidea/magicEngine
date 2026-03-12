@@ -7,11 +7,34 @@ import (
 	"net/http"
 )
 
-// HTTPServer HTTPServer
 type HTTPServer interface {
 	Use(handler MiddleWareHandler)
 	Bind(routeRegistry RouteRegistry)
 	Run()
+}
+
+type HTTPServerOption func(*httpServer)
+
+func WithPort(port string) HTTPServerOption {
+	return func(s *httpServer) {
+		s.listenAddr = fmt.Sprintf(":%s", port)
+	}
+}
+
+func WithStatic(rootPath, prefixUri, excludeUri string) HTTPServerOption {
+	return func(s *httpServer) {
+		s.staticOptions = &StaticOptions{
+			RootPath:   rootPath,
+			PrefixUri:  prefixUri,
+			ExcludeUri: excludeUri,
+		}
+	}
+}
+
+func WithStaticEnabled(enabled bool) HTTPServerOption {
+	return func(s *httpServer) {
+		s.enableStatic = enabled
+	}
 }
 
 type httpServer struct {
@@ -19,18 +42,25 @@ type httpServer struct {
 	routeRegistry    RouteRegistry
 	middlewareChains MiddleWareChains
 	staticOptions    *StaticOptions
+	enableStatic     bool
 }
 
-// NewHTTPServer 新建HTTPServer
-func NewHTTPServer(bindPort string, enableShareStatic bool) HTTPServer {
-	listenAddr := fmt.Sprintf(":%s", bindPort)
-	svr := &httpServer{listenAddr: listenAddr, middlewareChains: NewMiddleWareChains()}
+func NewHTTPServer(opts ...HTTPServerOption) HTTPServer {
+	svr := &httpServer{
+		listenAddr:       ":8080",
+		middlewareChains: NewMiddleWareChains(),
+		staticOptions:    &StaticOptions{RootPath: "./static", PrefixUri: "/static", ExcludeUri: "/api/"},
+		enableStatic:     false,
+	}
+
+	for _, opt := range opts {
+		opt(svr)
+	}
 
 	svr.Use(&logger{})
 	svr.Use(&recovery{})
 
-	svr.staticOptions = &StaticOptions{RootPath: "./static", PrefixUri: "/static", ExcludeUri: "/api/"}
-	if enableShareStatic {
+	if svr.enableStatic {
 		svr.Use(&static{rootPath: Root})
 	}
 

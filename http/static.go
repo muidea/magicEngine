@@ -33,20 +33,88 @@ type StaticOptions struct {
 func prepareStaticOptions(option *StaticOptions) StaticOptions {
 	opt := *option
 
-	// 默认值
 	if len(opt.IndexFile) == 0 {
 		opt.IndexFile = "index.html"
 	}
-	// 标准化提供的前缀
 	if opt.PrefixUri != "" {
-		// 确保有前导 '/'
 		if opt.PrefixUri[0] != '/' {
 			opt.PrefixUri = "/" + opt.PrefixUri
 		}
-		// 移除任何尾随 '/'
 		opt.PrefixUri = strings.TrimRight(opt.PrefixUri, "/")
 	}
 	return opt
+}
+
+func resolveRootDirectory(rootPath string, relativeTo string) string {
+	if filepath.IsAbs(rootPath) {
+		return rootPath
+	}
+	dir := filepath.Join(relativeTo, rootPath)
+	if filepath.IsAbs(dir) {
+		return dir
+	}
+	return filepath.Join(Root, dir)
+}
+
+func serveStaticFile(dir http.Dir, opt StaticOptions, fileUri string, res http.ResponseWriter, req *http.Request, skipLogging bool) error {
+	openFile, openErr := dir.Open(fileUri)
+	if openErr != nil {
+		if opt.Fallback != "" {
+			fileUri = opt.Fallback
+			openFile, openErr = dir.Open(opt.Fallback)
+		}
+		if openErr != nil {
+			return openErr
+		}
+	}
+	defer func() {
+		_ = openFile.Close()
+	}()
+
+	fileInfo, statErr := openFile.Stat()
+	if statErr != nil {
+		return statErr
+	}
+
+	if fileInfo.IsDir() {
+		if !strings.HasSuffix(req.URL.Path, "/") {
+			dest := url.URL{
+				Path:     req.URL.Path + "/",
+				RawQuery: req.URL.RawQuery,
+				Fragment: req.URL.Fragment,
+			}
+			http.Redirect(res, req, dest.String(), http.StatusFound)
+			return nil
+		}
+
+		fileUri = path.Join(fileUri, opt.IndexFile)
+		openFile, openErr = dir.Open(fileUri)
+		if openErr != nil {
+			return openErr
+		}
+		defer func() {
+			_ = openFile.Close()
+		}()
+
+		fileInfo, statErr = openFile.Stat()
+		if statErr != nil {
+			return statErr
+		}
+		if fileInfo.IsDir() {
+			return ErrURLNotFound
+		}
+	}
+
+	if !skipLogging {
+		slog.Info("serving static file", "uri", fileUri)
+	}
+
+	if opt.Expires != nil {
+		res.Header().Set("Expires", opt.Expires())
+	}
+
+	http.ServeContent(res, req, fileUri, fileInfo.ModTime(), openFile)
+	return nil
 }
 
 // static 静态文件处理器
@@ -57,124 +125,43 @@ type static struct {
 
 // MiddleWareHandle 处理静态文件请求的中间件
 func (s *static) MiddleWareHandle(ctx RequestContext, res http.ResponseWriter, req *http.Request) {
-	var err error
 	staticOpt, staticOK := helper.GetValueFromContext[*StaticOptions](ctx.Context(), StaticOptionsKey{})
 	if !staticOK {
 		panicInfo("无法获取静态处理器")
 	}
 
-	defer func() {
-		if err != nil {
-			ctx.Next()
-		}
-	}()
-
-	rootDirectory := staticOpt.RootPath
-	if !filepath.IsAbs(rootDirectory) {
-		rootDirectory = filepath.Join(s.rootPath, rootDirectory)
-	}
-	// 防止directory为相对路径
-	if !filepath.IsAbs(rootDirectory) {
-		rootDirectory = filepath.Join(Root, rootDirectory)
-	}
-
-	dir := http.Dir(rootDirectory)
-	opt := prepareStaticOptions(staticOpt)
-
-	// 检查HTTP方法是否为GET或HEAD
 	if req.Method != GET && req.Method != HEAD {
-		err = ErrMethodNotAllowed
+		ctx.Next()
 		return
 	}
+
+	opt := prepareStaticOptions(staticOpt)
 	if opt.ExcludeUri != "" && strings.HasPrefix(req.URL.Path, opt.ExcludeUri) {
-		err = ErrURLNotFound
+		ctx.Next()
 		return
 	}
+
+	rootDirectory := resolveRootDirectory(staticOpt.RootPath, s.rootPath)
+	dir := http.Dir(rootDirectory)
 
 	fileUri := req.URL.Path
-
-	// 如果有前缀，通过去掉前缀来过滤请求
 	prefixUrl := filepath.Join(opt.PrefixUri, s.subPrefixUri)
 	if prefixUrl != "" {
 		if !strings.HasPrefix(fileUri, prefixUrl) {
-			err = ErrURLNotFound
+			ctx.Next()
 			return
 		}
 		fileUri = fileUri[len(opt.PrefixUri):]
 		if fileUri != "" && fileUri[0] != '/' {
-			err = ErrURLNotFound
+			ctx.Next()
 			return
 		}
 	}
 
-	staticFile, staticErr := dir.Open(fileUri)
-	if staticErr != nil {
-		// 在放弃之前尝试回退文件
-		if opt.Fallback != "" {
-			fileUri = opt.Fallback // 保持日志记录的真实性
-			staticFile, staticErr = dir.Open(opt.Fallback)
-		}
-
-		if staticErr != nil {
-			// 丢弃错误？
-			err = staticErr
-			return
-		}
+	err := serveStaticFile(dir, opt, fileUri, res, req, opt.SkipLogging)
+	if err != nil {
+		ctx.Next()
 	}
-	defer func() {
-		_ = staticFile.Close()
-	}()
-
-	staticFileInfo, staticFileErr := staticFile.Stat()
-	if staticFileErr != nil {
-		err = staticFileErr
-		return
-	}
-
-	// 尝试提供索引文件
-	if staticFileInfo.IsDir() {
-		// 如果缺少尾随斜杠则重定向
-		if !strings.HasSuffix(req.URL.Path, "/") {
-			dest := url.URL{
-				Path:     req.URL.Path + "/",
-				RawQuery: req.URL.RawQuery,
-				Fragment: req.URL.Fragment,
-			}
-			http.Redirect(res, req, dest.String(), http.StatusFound)
-			return
-		}
-
-		fileUri = path.Join(fileUri, opt.IndexFile)
-		staticFile, staticFileErr = dir.Open(fileUri)
-		if staticFileErr != nil {
-			err = staticFileErr
-			return
-		}
-		defer func() {
-			_ = staticFile.Close()
-		}()
-
-		staticFileInfo, staticFileErr = staticFile.Stat()
-		if staticFileErr != nil {
-			err = staticFileErr
-			return
-		}
-		if staticFileInfo.IsDir() {
-			err = ErrURLNotFound
-			return
-		}
-	}
-
-	if !opt.SkipLogging {
-		slog.Info("serving static file", "uri", fileUri)
-	}
-
-	// 为静态内容添加过期头
-	if opt.Expires != nil {
-		res.Header().Set("Expires", opt.Expires())
-	}
-
-	http.ServeContent(res, req, fileUri, staticFileInfo.ModTime(), staticFile)
 }
 
 func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Request) {
@@ -183,12 +170,7 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 		panicInfo("无法获取静态处理器")
 	}
 
-	rootDirectory := staticOpt.RootPath
-	// 防止directory为相对路径
-	if !filepath.IsAbs(rootDirectory) {
-		rootDirectory = filepath.Join(Root, rootDirectory)
-	}
-
+	rootDirectory := resolveRootDirectory(staticOpt.RootPath, Root)
 	dir := http.Dir(rootDirectory)
 	opt := prepareStaticOptions(staticOpt)
 	uriFilePath := req.URL.Path
@@ -200,89 +182,9 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 
 	uriFilePath = uriFilePath[len(opt.PrefixUri):]
 
-	var err error
-	var staticFileHandle http.File
-
-	staticUriFileHandle, staticUriFileErr := dir.Open(uriFilePath)
-	defer func() {
-		if staticUriFileHandle != nil {
-			_ = staticUriFileHandle.Close()
-		}
-
-		if err != nil {
-			slog.Warn("failed to serve static file", "path", uriFilePath, "err", err)
-			res.WriteHeader(http.StatusInternalServerError)
-		}
-	}()
-
-	if staticUriFileErr != nil {
-		// 在放弃之前尝试回退文件
-		if opt.Fallback != "" {
-			uriFilePath = opt.Fallback // 保持日志记录的真实性
-			staticUriFileHandle, staticUriFileErr = dir.Open(opt.Fallback)
-		}
-
-		if staticUriFileErr != nil {
-			// 丢弃错误？
-			err = staticUriFileErr
-			return
-		}
-		staticFileHandle = staticUriFileHandle
-	} else {
-		staticFileHandle = staticUriFileHandle
+	err := serveStaticFile(dir, opt, uriFilePath, res, req, false)
+	if err != nil {
+		slog.Warn("failed to serve static file", "path", uriFilePath, "err", err)
+		res.WriteHeader(http.StatusInternalServerError)
 	}
-
-	staticFileInfo, staticFileErr := staticFileHandle.Stat()
-	if staticFileErr != nil {
-		err = staticFileErr
-		return
-	}
-
-	// 尝试提供索引文件
-	if staticFileInfo.IsDir() {
-		if opt.IndexFile == "" {
-			err = ErrURLNotFound
-			return
-		}
-
-		// 如果缺少尾随斜杠则重定向
-		if !strings.HasSuffix(req.URL.Path, "/") {
-			dest := url.URL{
-				Path:     req.URL.Path + "/",
-				RawQuery: req.URL.RawQuery,
-				Fragment: req.URL.Fragment,
-			}
-			http.Redirect(res, req, dest.String(), http.StatusFound)
-			return
-		}
-
-		uriFilePath = path.Join(uriFilePath, opt.IndexFile)
-		staticIndexFileHandle, staticIndexFileErr := dir.Open(uriFilePath)
-		if staticIndexFileErr != nil {
-			err = staticIndexFileErr
-			return
-		}
-		defer func() {
-			_ = staticIndexFileHandle.Close()
-		}()
-
-		staticFileInfo, staticFileErr = staticIndexFileHandle.Stat()
-		if staticFileErr != nil {
-			err = staticFileErr
-			return
-		}
-		if staticFileInfo.IsDir() {
-			err = ErrURLNotFound
-			return
-		}
-
-		staticFileHandle = staticIndexFileHandle
-	}
-
-	// 为静态内容添加过期头
-	if opt.Expires != nil {
-		res.Header().Set("Expires", opt.Expires())
-	}
-
-	http.ServeContent(res, req, uriFilePath, staticFileInfo.ModTime(), staticFileHandle)
 }

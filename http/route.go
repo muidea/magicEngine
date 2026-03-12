@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -180,19 +181,15 @@ func (s *routeRegistry) GetApiVersion() string {
 }
 
 func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
+	curApiVersion := s.currentApiVersion
+
+	slog.Info("addRoute", "apiVersion", s.currentApiVersion, "pattern", rt.Pattern(), "method", rt.Method())
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
 
-	curApiVersion := s.currentApiVersion
 	routeSlice, ok := s.routes[rt.Method()]
 	if ok {
-		for _, val := range *routeSlice {
-			if val.equalRoute(curApiVersion, rt) {
-				msg := fmt.Sprintf("duplicate route!, apiVersion:%s, pattern:%s, method:%s", curApiVersion, rt.Pattern(), rt.Method())
-				panicInfo(msg)
-			}
-		}
-
+		s.checkDuplicateRoute(routeSlice, curApiVersion, rt)
 		item := newRouteItem(curApiVersion, rt, filters...)
 		*routeSlice = append(*routeSlice, item)
 		return
@@ -202,6 +199,15 @@ func (s *routeRegistry) AddRoute(rt Route, filters ...MiddleWareHandler) {
 	routeSlice = &routeItemSlice{}
 	*routeSlice = append(*routeSlice, item)
 	s.routes[rt.Method()] = routeSlice
+}
+
+func (s *routeRegistry) checkDuplicateRoute(routeSlice *routeItemSlice, curApiVersion string, rt Route) {
+	for _, val := range *routeSlice {
+		if val.equalRoute(curApiVersion, rt) {
+			msg := fmt.Sprintf("duplicate route!, apiVersion:%s, pattern:%s, method:%s", curApiVersion, rt.Pattern(), rt.Method())
+			panicInfo(msg)
+		}
+	}
 }
 
 func (s *routeRegistry) RemoveRoute(rt Route) {
@@ -228,6 +234,9 @@ func (s *routeRegistry) RemoveHandler(uriPattern, method string) {
 }
 
 func (s *routeRegistry) removeRouteImpl(uriPattern, method string) {
+	curApiVersion := s.currentApiVersion
+	slog.Info("removeRoute", "apiVersion", s.currentApiVersion, "pattern", uriPattern, "method", method)
+
 	s.routesLock.Lock()
 	defer s.routesLock.Unlock()
 
@@ -237,7 +246,6 @@ func (s *routeRegistry) removeRouteImpl(uriPattern, method string) {
 		panicInfo(msg)
 	}
 
-	curApiVersion := s.currentApiVersion
 	newRoutes := routeItemSlice{}
 	for idx, val := range *routeSlice {
 		if val.equalPattern(curApiVersion, uriPattern) {
@@ -301,12 +309,14 @@ func (s *routeRegistry) ExistHandler(uriPattern, method string) bool {
 		return false
 	}
 
-	curApiVersion := s.currentApiVersion
+	return s.findRoute(routeSlice, s.currentApiVersion, uriPattern) != nil
+}
+
+func (s *routeRegistry) findRoute(routeSlice *routeItemSlice, curApiVersion string, uriPattern string) *routeItem {
 	for _, val := range *routeSlice {
 		if val.equalPattern(curApiVersion, uriPattern) {
-			return true
+			return val
 		}
 	}
-
-	return false
+	return nil
 }

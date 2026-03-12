@@ -10,7 +10,7 @@ func main() {
 
 	Append(router)
 
-	svr := engine.NewHTTPServer("8010", false)
+	svr := engine.NewHTTPServer(engine.WithPort("8010"))
 	svr.Bind(router)
 
 	svr.Use(&MiddleWareHello{Index: 100})
