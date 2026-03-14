@@ -62,7 +62,7 @@ func (s *Holder) OnRecv(event string, data []byte) {
 	s.lastActive = time.Now()
 	s.syncMutexPtr.Unlock()
 
-	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
+	s.httpResponseWriter.Header().Set("Content-Type", sseStream)
 	if event != "" {
 		_, err = s.httpResponseWriter.Write([]byte("event: " + event + "\n"))
 		if err != nil {
@@ -70,7 +70,7 @@ func (s *Holder) OnRecv(event string, data []byte) {
 			return
 		}
 	}
-	_, err = s.httpResponseWriter.Write([]byte("data: " + string(data) + "\n"))
+	_, err = s.httpResponseWriter.Write([]byte("data: " + string(data) + "\n\n"))
 	if err != nil {
 		slog.Error("write data failed", "err", err)
 		return
@@ -99,8 +99,8 @@ func (s *Holder) heartbeat() (err error) {
 	s.lastActive = time.Now()
 	s.syncMutexPtr.Unlock()
 
-	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
-	_, err = s.httpResponseWriter.Write([]byte(": ping\n"))
+	s.httpResponseWriter.Header().Set("Content-Type", sseStream)
+	_, err = s.httpResponseWriter.Write([]byte(": ping\n\n"))
 	if err != nil {
 		slog.Error("write heartbeat failed", "err", err)
 		return
@@ -128,7 +128,7 @@ func (s *Holder) EchoSSEID() (err error) {
 	s.lastActive = time.Now()
 	s.syncMutexPtr.Unlock()
 
-	s.httpResponseWriter.Header().Add("Content-Type", sseStream)
+	s.httpResponseWriter.Header().Set("Content-Type", sseStream)
 	_, err = s.httpResponseWriter.Write(fmt.Appendf(nil, "event: sseID\ndata: %s\n\n", s.sseID))
 	if err != nil {
 		slog.Error("write heartbeat failed", "err", err)
@@ -144,6 +144,10 @@ func (s *Holder) EchoSSEID() (err error) {
 }
 
 func (s *Holder) Run(taskFunc func() error) error {
+	if taskFunc == nil {
+		return nil
+	}
+
 	// 这里主动进行限制，已有一个Master，在进行心跳检测
 	var curMasterFlag bool
 	func() {
@@ -152,10 +156,6 @@ func (s *Holder) Run(taskFunc func() error) error {
 		curMasterFlag = s.masterFlag
 	}()
 	if curMasterFlag {
-		if taskFunc == nil {
-			return nil
-		}
-
 		return taskFunc()
 	}
 
@@ -165,20 +165,15 @@ func (s *Holder) Run(taskFunc func() error) error {
 		s.masterFlag = true
 	}()
 
-	wg := &sync.WaitGroup{}
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	var runErr error
 
-	taskOK := false
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer func() {
-			taskOK = true
-		}()
-
-		err := taskFunc()
-		if err != nil {
-			return
-		}
+		defer close(done)
+		runErr = taskFunc()
 	}()
 
 	wg.Add(1)
@@ -189,24 +184,22 @@ func (s *Holder) Run(taskFunc func() error) error {
 
 		for {
 			select {
+			case <-done:
+				return
 			case <-ticker.C:
 				s.syncMutexPtr.Lock()
-				lastActive := s.lastActive // 获取最后活动时间副本
+				lastActive := s.lastActive
 				s.syncMutexPtr.Unlock()
 
 				if time.Since(lastActive) > timerTimeout {
 					_ = s.heartbeat()
-				}
-			default:
-				if taskOK {
-					return
 				}
 			}
 		}
 	}()
 
 	wg.Wait()
-	return nil
+	return runErr
 }
 
 func NewHolder(res http.ResponseWriter, req *http.Request) *Holder {

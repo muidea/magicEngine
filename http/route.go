@@ -254,7 +254,7 @@ func (s *routeRegistry) removeRouteImpl(uriPattern, method string) {
 			}
 
 			idx++
-			if idx < len(s.routes) {
+			if idx < len(*routeSlice) {
 				newRoutes = append(newRoutes, (*routeSlice)[idx:]...)
 			}
 

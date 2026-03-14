@@ -67,9 +67,9 @@ func serveStaticFile(dir http.Dir, opt StaticOptions, fileUri string, res http.R
 			return openErr
 		}
 	}
-	defer func() {
-		_ = openFile.Close()
-	}()
+	defer func(file http.File) {
+		_ = file.Close()
+	}(openFile)
 
 	fileInfo, statErr := openFile.Stat()
 	if statErr != nil {
@@ -92,9 +92,9 @@ func serveStaticFile(dir http.Dir, opt StaticOptions, fileUri string, res http.R
 		if openErr != nil {
 			return openErr
 		}
-		defer func() {
-			_ = openFile.Close()
-		}()
+		defer func(file http.File) {
+			_ = file.Close()
+		}(openFile)
 
 		fileInfo, statErr = openFile.Stat()
 		if statErr != nil {

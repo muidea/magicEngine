@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +36,7 @@ func NewClient(uri string, retryWait time.Duration, maxRetries int) *Client {
 	return &Client{
 		serverURI:  uri,
 		maxRetries: maxRetries,
+		retryWait:  retryWait,
 	}
 }
 
@@ -55,7 +57,7 @@ func (s *Client) Get(ctx context.Context, header url.Values, sink StreamSinker) 
 	}
 
 	actionFunc := func() (err error) {
-		clientCtx, clientCancel := context.WithCancel(context.Background())
+		clientCtx, clientCancel := context.WithCancel(ctx)
 		defer func() {
 			s.syncMutex.Lock()
 			defer s.syncMutex.Unlock()
@@ -139,7 +141,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 	}
 
 	actionFunc := func() (err error) {
-		clientCtx, clientCancel := context.WithCancel(context.Background())
+		clientCtx, clientCancel := context.WithCancel(ctx)
 		defer func() {
 			s.syncMutex.Lock()
 			defer s.syncMutex.Unlock()
@@ -197,7 +199,7 @@ func (s *Client) Post(ctx context.Context, byteVal []byte, header url.Values, si
 			return
 		}
 
-		err = s.recvVal(ctx, responseVal, sink)
+		err = s.recvVal(clientCtx, responseVal, sink)
 		return
 	}
 
@@ -286,15 +288,15 @@ func (s *Client) recvVal(ctx context.Context, resp *http.Response, sink StreamSi
 
 			switch {
 			case bytes.HasPrefix(byteVal, []byte("event:")):
-				currentEvent.Name = string(bytes.TrimPrefix(byteVal, []byte("event:")))
+				currentEvent.Name = strings.TrimSpace(string(bytes.TrimPrefix(byteVal, []byte("event:"))))
 			case bytes.HasPrefix(byteVal, []byte("id:")):
-				currentEvent.ID = string(bytes.TrimPrefix(byteVal, []byte("id:")))
+				currentEvent.ID = strings.TrimSpace(string(bytes.TrimPrefix(byteVal, []byte("id:"))))
 			case bytes.HasPrefix(byteVal, []byte("data:")):
 				currentEvent.Data = append(currentEvent.Data,
-					bytes.TrimPrefix(byteVal, []byte("data:"))...)
+					bytes.TrimSpace(bytes.TrimPrefix(byteVal, []byte("data:")))...)
 				currentEvent.Data = append(currentEvent.Data, '\n')
 			case bytes.HasPrefix(byteVal, []byte("retry:")):
-				if retry, err := time.ParseDuration(string(bytes.TrimPrefix(byteVal, []byte("retry:")))); err == nil {
+				if retry, err := time.ParseDuration(strings.TrimSpace(string(bytes.TrimPrefix(byteVal, []byte("retry:"))))); err == nil {
 					s.retryWait = retry
 				}
 			}

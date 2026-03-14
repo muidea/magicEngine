@@ -114,7 +114,7 @@ func (s *endpointImpl) SendData(data []byte) (err error) {
 	offSet := 0
 	totalSize := len(data)
 	for {
-		sendSize, sendErr := s.connVal.Write(data[offSet : totalSize-offSet])
+		sendSize, sendErr := s.connVal.Write(data[offSet:totalSize])
 		if sendErr != nil {
 			err = sendErr
 			break
