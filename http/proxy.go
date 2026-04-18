@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+type ProxyErrorHandler func(http.ResponseWriter, *http.Request, error)
+
 // newReverseProxy 创建一个新的反向代理，将请求转发到指定的目标URL
 // 它会合并目标URL和传入请求中的查询参数
 func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
@@ -64,26 +66,64 @@ func cloneQueryValues(values url.Values) url.Values {
 	return ret
 }
 
-func (s *proxyRoute) applyTarget(req *http.Request) *url.URL {
-	targetURI := &url.URL{}
-	if s.targetURI != nil {
-		*targetURI = *s.targetURI
+func applyProxyTarget(targetURI *url.URL, req *http.Request) *url.URL {
+	target := &url.URL{}
+	if targetURI != nil {
+		*target = *targetURI
 	}
 
-	targetQuery := cloneQueryValues(targetURI.Query())
+	targetQuery := cloneQueryValues(target.Query())
 	reqQuery := req.URL.Query()
 
 	dynamicTAG := req.Header.Get(DynamicTag)
 	dynamicValue := req.Header.Get(DynamicValue)
 	if dynamicTAG != "" && dynamicValue != "" {
-		targetURI.Path = strings.ReplaceAll(targetURI.Path, dynamicTAG, dynamicValue)
+		target.Path = strings.ReplaceAll(target.Path, dynamicTAG, dynamicValue)
 	}
 
 	for k, v := range reqQuery {
 		targetQuery.Set(k, v[0])
 	}
-	targetURI.RawQuery = targetQuery.Encode()
-	return targetURI
+	target.RawQuery = targetQuery.Encode()
+	return target
+}
+
+func (s *proxyRoute) applyTarget(req *http.Request) *url.URL {
+	return applyProxyTarget(s.targetURI, req)
+}
+
+// ProxyHTTP proxies the current request to a dynamically resolved target URL.
+func ProxyHTTP(res http.ResponseWriter, req *http.Request, targetURL string, errorHandler ProxyErrorHandler) error {
+	targetURI, err := url.Parse(targetURL)
+	if err != nil {
+		return err
+	}
+
+	target := applyProxyTarget(targetURI, req)
+	if target.Hostname() == "" {
+		http.Redirect(res, req, target.String(), http.StatusSeeOther)
+		return nil
+	}
+
+	proxy := &httputil.ReverseProxy{
+		Director: func(proxyReq *http.Request) {
+			proxyReq.URL.Scheme = target.Scheme
+			proxyReq.URL.Host = target.Host
+			proxyReq.Host = target.Host
+			proxyReq.URL.Path = target.Path
+			proxyReq.URL.RawQuery = target.RawQuery
+		},
+	}
+	proxy.ErrorHandler = func(res http.ResponseWriter, req *http.Request, err error) {
+		if errorHandler != nil {
+			errorHandler(res, req, err)
+			return
+		}
+		res.WriteHeader(http.StatusInternalServerError)
+		_, _ = res.Write([]byte(err.Error()))
+	}
+	proxy.ServeHTTP(res, req)
+	return nil
 }
 
 // proxyFun 是实际处理请求转发的函数
