@@ -24,7 +24,7 @@ github.com/google/uuid
 ## explicit; go 1.18
 github.com/leodido/go-urn
 github.com/leodido/go-urn/scim/schema
-# github.com/muidea/magicCommon v1.5.0 => ../magicCommon
+# github.com/muidea/magicCommon v1.5.7 => ../magicCommon
 ## explicit; go 1.24.0
 github.com/muidea/magicCommon/def
 github.com/muidea/magicCommon/execute
