@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/muidea/magicCommon/foundation/util"
-	"github.com/muidea/magicEngine/tcp"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/muidea/magicCommon/foundation/util"
+	"github.com/muidea/magicEngine/tcp"
 )
 
 type Echo struct {

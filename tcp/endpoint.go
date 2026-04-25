@@ -6,8 +6,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/muidea/magicCommon/execute"
 	"log/slog"
+
+	"github.com/muidea/magicCommon/execute"
 )
 
 type Endpoint interface {

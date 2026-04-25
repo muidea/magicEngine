@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	pu "github.com/muidea/magicCommon/foundation/util"
 	"log/slog"
+
+	pu "github.com/muidea/magicCommon/foundation/util"
 )
 
 const (

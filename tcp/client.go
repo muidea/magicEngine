@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/muidea/magicCommon/execute"
 	"log/slog"
+
+	"github.com/muidea/magicCommon/execute"
 )
 
 type Client interface {

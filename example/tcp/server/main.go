@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 
+	"log/slog"
+
 	"github.com/muidea/magicCommon/execute"
 	"github.com/muidea/magicEngine/tcp"
-	"log/slog"
 )
 
 type Echo struct {
