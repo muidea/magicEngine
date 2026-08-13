@@ -1,10 +1,12 @@
 package http
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -24,7 +26,7 @@ func TestCreateProxyRouteCachesProxyAndRewritesDynamicPath(t *testing.T) {
 		t.Fatal("expected proxy to be prebuilt at route creation")
 	}
 
-	req, err := http.NewRequest(http.MethodGet, "http://example.com/demo/42?runtime=2", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/demo/42?runtime=2&runtime=3", nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest failed: %v", err)
 	}
@@ -42,10 +44,63 @@ func TestCreateProxyRouteCachesProxyAndRewritesDynamicPath(t *testing.T) {
 	if req.URL.Path != "/target/42" {
 		t.Fatalf("path = %q, want %q", req.URL.Path, "/target/42")
 	}
-	gotQuery := req.URL.RawQuery
-	if gotQuery != "fixed=1&runtime=2" && gotQuery != "runtime=2&fixed=1" {
-		t.Fatalf("query = %q, want merged fixed/runtime params", gotQuery)
+	if got := req.URL.Query()["runtime"]; len(got) != 2 || got[0] != "2" || got[1] != "3" {
+		t.Fatalf("runtime query = %#v, want repeated values preserved", got)
 	}
+}
+
+func TestCreateProxyRouteWithoutRewritePreservesRequestPath(t *testing.T) {
+	route := CreateProxyRoute("/demo/:id", http.MethodGet, "https://backend.example/base/:id?fixed=1", false)
+	proxyRoutePtr := route.(*proxyRoute)
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/demo/42?runtime=2&runtime=3", nil)
+	req.Header.Set(DynamicTag, ":id")
+	req.Header.Set(DynamicValue, "42")
+
+	proxyRoutePtr.proxy.Director(req)
+
+	if req.URL.Path != "/base/42/demo/42" {
+		t.Fatalf("path = %q, want target base path joined with request path", req.URL.Path)
+	}
+	if got := req.URL.Query()["runtime"]; len(got) != 2 || got[0] != "2" || got[1] != "3" {
+		t.Fatalf("runtime query = %#v, want repeated values preserved", got)
+	}
+}
+
+func TestProxyRouteBackendFailureReturnsBadGateway(t *testing.T) {
+	route := CreateProxyRoute("/proxy", http.MethodGet, "https://backend.example/target", true).(*proxyRoute)
+	route.proxy.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("backend secret")
+	})
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/proxy", nil)
+
+	route.proxyFun(req.Context(), res, req)
+
+	if res.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusBadGateway)
+	}
+	if strings.Contains(res.Body.String(), "backend secret") {
+		t.Fatalf("response exposed backend error: %q", res.Body.String())
+	}
+}
+
+func TestProxyRouteConcurrentRequests(t *testing.T) {
+	route := CreateProxyRoute("/proxy", http.MethodGet, "https://backend.example/target", true).(*proxyRoute)
+	route.proxy.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("unavailable")
+	})
+
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "http://example.com/proxy", nil)
+			route.proxyFun(req.Context(), res, req)
+		}()
+	}
+	wg.Wait()
 }
 
 func TestProxyHTTPForwardsRequestToDynamicTarget(t *testing.T) {

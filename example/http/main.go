@@ -19,5 +19,7 @@ func main() {
 
 	//svr.Use(&test.Test{Index: 103})
 
-	svr.Run()
+	if err := svr.Run(); err != nil {
+		panic(err)
+	}
 }

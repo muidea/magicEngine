@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 )
 
@@ -28,6 +29,37 @@ func TestRouteRegistry_RemoveRoute(t *testing.T) {
 	if registry.ExistRoute(route) {
 		t.Error("expected route to be removed")
 	}
+}
+
+func TestRouteRegistry_RemoveMissingRoutePreservesMethodRoutes(t *testing.T) {
+	registry := NewRouteRegistry()
+	first := CreateRoute("/first", GET, func(context.Context, http.ResponseWriter, *http.Request) {})
+	second := CreateRoute("/second", GET, func(context.Context, http.ResponseWriter, *http.Request) {})
+	registry.AddRoute(first)
+	registry.AddRoute(second)
+
+	registry.RemoveHandler("/missing", GET)
+
+	if !registry.ExistRoute(first) || !registry.ExistRoute(second) {
+		t.Fatal("removing a missing route removed existing routes")
+	}
+}
+
+func TestRouteRegistry_ApiVersionConcurrentAccess(t *testing.T) {
+	registry := NewRouteRegistry()
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			registry.SetApiVersion("v1")
+		}()
+		go func() {
+			defer wg.Done()
+			_ = registry.GetApiVersion()
+		}()
+	}
+	wg.Wait()
 }
 
 func TestRouteRegistry_AddHandler(t *testing.T) {

@@ -14,7 +14,8 @@
 3. 创建 `HTTPServer`
 4. 通过 `Bind(...)` 绑定 registry
 5. 通过 `Use(...)` 添加全局 middleware
-6. 调用 `Run()`
+6. 调用 `Run()` 并处理监听错误
+7. 停机时调用 `Shutdown(context.Context)`
 
 ## 路由规则
 
@@ -57,7 +58,15 @@
   - `FileField{}`
   - `FileName{}`
 
+## 代理
+
+- `rewriteURL=true` 用配置的目标路径替换原请求路径
+- `rewriteURL=false` 使用标准单主机反向代理语义，拼接目标基础路径和原请求路径
+- 目标和请求 query 会合并，重复参数值会保留
+- 后端连接错误在服务端记录，客户端统一收到 `502 Bad Gateway`
+
 ## 最近修复的行为
 
 - `RemoveRoute(...)` 删除末尾 route 时不再误用 `len(s.routes)`
+- `RemoveRoute(...)` 找不到目标时保留同 method 的现有路由
 - `serveStaticFile(...)` 在目录索引和 fallback 场景下不会再重复关闭错误文件句柄

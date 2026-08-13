@@ -1,7 +1,10 @@
 package tcp
 
 import (
+	"context"
+	"errors"
 	"net"
+	"sync"
 
 	"log/slog"
 
@@ -10,6 +13,7 @@ import (
 
 type Server interface {
 	Run(bindAddr string) error
+	Shutdown(ctx context.Context) error
 }
 
 type ServerSink interface {
@@ -19,6 +23,8 @@ type ServerSink interface {
 type serverImpl struct {
 	executePtr *execute.Execute
 	serverSink ServerSink
+	listenerMu sync.Mutex
+	listener   net.Listener
 }
 
 func NewServer(sink ServerSink, executePtr *execute.Execute) Server {
@@ -35,16 +41,27 @@ func (s *serverImpl) Run(bindAddr string) (err error) {
 		err = listenerErr
 		return
 	}
+	s.listenerMu.Lock()
+	s.listener = listenerVal
+	s.listenerMu.Unlock()
 	defer func() {
 		_ = listenerVal.Close()
+		s.listenerMu.Lock()
+		if s.listener == listenerVal {
+			s.listener = nil
+		}
+		s.listenerMu.Unlock()
 	}()
 
 	slog.Info("TCP server started", "addr", bindAddr)
 	for {
 		connVal, connErr := listenerVal.Accept()
 		if connErr != nil {
+			if errors.Is(connErr, net.ErrClosed) {
+				return nil
+			}
 			slog.Error("accept new connection failed", "err", connErr)
-			continue
+			return connErr
 		}
 
 		slog.Info("accepted new connection", "from", connVal.RemoteAddr().String())
@@ -57,4 +74,15 @@ func (s *serverImpl) Run(bindAddr string) (err error) {
 			s.serverSink.OnNewConnect(connVal)
 		})
 	}
+}
+
+func (s *serverImpl) Shutdown(_ context.Context) error {
+	s.listenerMu.Lock()
+	listener := s.listener
+	s.listener = nil
+	s.listenerMu.Unlock()
+	if listener == nil {
+		return nil
+	}
+	return listener.Close()
 }

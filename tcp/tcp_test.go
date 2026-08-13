@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -180,5 +181,35 @@ func TestSimpleEndpointManagerTracksLifecycle(t *testing.T) {
 	}
 	if len(observer.payloads) != 1 || string(observer.payloads[0]) != "hello" {
 		t.Fatalf("unexpected payloads: %#v", observer.payloads)
+	}
+}
+
+func TestServerShutdownStopsAcceptLoop(t *testing.T) {
+	execVal := execute.NewExecute(1)
+	server := NewServer(nil, &execVal).(*serverImpl)
+	done := make(chan error, 1)
+	go func() {
+		done <- server.Run("127.0.0.1:0")
+	}()
+
+	deadline := time.Now().Add(time.Second)
+	for {
+		server.listenerMu.Lock()
+		listening := server.listener != nil
+		server.listenerMu.Unlock()
+		if listening {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("server did not start listening")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("shutdown failed: %v", err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("run returned error after shutdown: %v", err)
 	}
 }

@@ -42,6 +42,7 @@
 - `OnConnect` / `OnDisConnect` / `OnRecvData` 都可能异步执行
 - `Client.SendData(...)` 依赖已建立的 endpoint
 - `endpoint.SendData(...)` 现在能正确处理部分写入，不会在分段发送时截断数据
+- `Server.Run(...)` 返回监听或 Accept 错误，`Shutdown(context.Context)` 会关闭 listener 并结束 Accept 循环
 
 ## 适用场景
 
