@@ -26,6 +26,7 @@
 
 - HTTP 默认注册 `logger` 和 `recovery` 中间件
 - `RouteRegistry` 支持 API version、动态路径参数 `:id` 和通配 `**`
+- HTTP 响应记账包装器安全透传 flush/hijack，并可由 `http.ResponseController` 解包；协议升级后不会追加默认 204
 - 静态资源支持文件系统和 embed 两种方式
 - SSE 支持 holder 注册、心跳、事件推送和客户端重试
 - TCP 基于 `magicCommon/execute` 做连接回调调度

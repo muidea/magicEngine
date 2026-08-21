@@ -45,3 +45,4 @@ GOCACHE=/tmp/magicengine-gocache go test ./tcp -count 1
 - SSE context 取消
 - SSE 完整事件帧和心跳帧
 - TCP 部分写入和生命周期
+- HTTP response writer 的 flush 状态、hijack 透传与 optional-interface 安全降级
