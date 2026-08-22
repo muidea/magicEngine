@@ -26,9 +26,9 @@ bash .agents/skills/go-refactor-pro/scripts/quality-check.sh
 ```
 
 ### Go Version
-- **Minimum**: Go 1.24.0
-- **Recommended**: Go 1.24.12+ (for security fixes)
-- **Toolchain**: go1.24.11 (current)
+- **Minimum**: Go 1.26.0
+- **Recommended**: Go 1.26.7+ (for security fixes)
+- **Toolchain**: go1.26.7 (current)
 
 ## Testing
 
@@ -311,7 +311,7 @@ type StaticError struct {
 1. **Missing dependencies**: Run `go mod download` and check local magicCommon
 2. **Import errors**: Verify import paths and local replacements
 3. **Test failures**: Check test environment and dependencies
-4. **Build errors**: Ensure Go version compatibility (1.24.0+)
+4. **Build errors**: Ensure Go version compatibility (1.26.0+)
 
 ### Debugging Tips
 - Use `go vet ./...` for static analysis

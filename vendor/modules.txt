@@ -24,24 +24,24 @@ github.com/google/uuid
 ## explicit; go 1.18
 github.com/leodido/go-urn
 github.com/leodido/go-urn/scim/schema
-# github.com/muidea/magicCommon v1.5.11 => ../magicCommon
-## explicit; go 1.24.0
+# github.com/muidea/magicCommon v1.5.13 => ../magicCommon
+## explicit; go 1.26.0
 github.com/muidea/magicCommon/def
 github.com/muidea/magicCommon/execute
 github.com/muidea/magicCommon/foundation/helper
 github.com/muidea/magicCommon/foundation/net
 github.com/muidea/magicCommon/foundation/util
-# golang.org/x/crypto v0.46.0
-## explicit; go 1.24.0
+# golang.org/x/crypto v0.55.0
+## explicit; go 1.25.0
 golang.org/x/crypto/sha3
-# golang.org/x/sync v0.19.0
-## explicit; go 1.24.0
+# golang.org/x/sync v0.22.0
+## explicit; go 1.25.0
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.39.0
-## explicit; go 1.24.0
+# golang.org/x/sys v0.47.0
+## explicit; go 1.25.0
 golang.org/x/sys/cpu
-# golang.org/x/text v0.32.0
-## explicit; go 1.24.0
+# golang.org/x/text v0.41.0
+## explicit; go 1.25.0
 golang.org/x/text/internal/language
 golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
