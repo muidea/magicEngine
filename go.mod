@@ -4,7 +4,7 @@ go 1.26.0
 
 toolchain go1.26.7
 
-require github.com/muidea/magicCommon v1.5.13
+require github.com/muidea/magicCommon v1.5.14
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
