@@ -30,6 +30,7 @@ github.com/muidea/magicCommon/def
 github.com/muidea/magicCommon/execute
 github.com/muidea/magicCommon/foundation/helper
 github.com/muidea/magicCommon/foundation/net
+github.com/muidea/magicCommon/foundation/profiling
 github.com/muidea/magicCommon/foundation/util
 # golang.org/x/crypto v0.55.0
 ## explicit; go 1.25.0
