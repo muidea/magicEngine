@@ -2,6 +2,14 @@
 
 This document provides guidelines for agentic coding assistants working in the magicEngine repository.
 
+## Model and Workflow Boundaries
+
+For model, DTO, lifecycle, recovery or cleanup changes, read [Workspace Boundary Rules](../docs/model-state-boundary-rules.md) and use its change-review template.
+
+- Keep HTTP/TCP/SSE, routing and middleware owner-neutral. Do not embed tenant provisioning, application deployment or platform workflow fields in protocol infrastructure.
+- Protocol cancellation and HTTP status are not business commit receipts. Keep domain state transitions in the application owner and preserve request context at adapter boundaries.
+- Change source owners first; never edit vendor manually. Sync direct dependents through the workspace `upgrade_vendor.sh`, update affected contracts and product materials, and record source regression separately from Live acceptance.
+
 ## Project Overview
 
 magicEngine is a Go HTTP framework with TCP and SSE support. It provides middleware chains, routing, static file serving, and other web framework features.
