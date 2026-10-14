@@ -9,18 +9,18 @@
 
 ## 目录
 
-- `http/`: HTTP 框架主实现
-- `sse/`: Server-Sent Events
-- `tcp/`: TCP 接入和连接封装
-- `example/`: HTTP / SSE / TCP 示例
+- `~/codespace/magicEngine/http`: HTTP 框架主实现
+- `~/codespace/magicEngine/sse`: Server-Sent Events
+- `~/codespace/magicEngine/tcp`: TCP 接入和连接封装
+- `~/codespace/magicEngine/example`: HTTP / SSE / TCP 示例
 - `docs/`: 当前实现说明和测试说明
-- `.agents/skills/`: 面向 Codex 的项目 skill
+- `~/codespace/.agents/skills`: 面向 Codex 的项目 skill
 
 ## 先看这些文档
 
-- `docs/design-http.md`
-- `docs/design-realtime.md`
-- `docs/testing-guide.md`
+- `~/codespace/magicEngine/docs/design-http.md`
+- `~/codespace/magicEngine/docs/design-realtime.md`
+- `~/codespace/magicEngine/docs/testing-guide.md`
 
 ## 当前实现要点
 
@@ -29,7 +29,7 @@
 - HTTP 响应记账包装器安全透传 flush/hijack，并可由 `http.ResponseController` 解包；协议升级后不会追加默认 204
 - 静态资源支持文件系统和 embed 两种方式
 - SSE 支持 holder 注册、心跳、事件推送和客户端重试
-- TCP 基于 `magicCommon/execute` 做连接回调调度
+- TCP 基于 `~/codespace/magicCommon/execute` 做连接回调调度
 
 ## 最近整理过的关键语义
 
@@ -47,6 +47,6 @@
 GOCACHE=/tmp/magicengine-gocache go test ./... -count 1
 ```
 
-详细说明见 `docs/testing-guide.md`。
+详细说明见 `~/codespace/magicEngine/docs/testing-guide.md`。
 
 压测和生产环境应设置 `MAGICENGINE_ENV=production`，关闭 development 模式的逐请求开始/结束日志，仅保留慢请求告警。

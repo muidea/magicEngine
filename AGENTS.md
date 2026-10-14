@@ -4,7 +4,7 @@ This document provides guidelines for agentic coding assistants working in the m
 
 ## Model and Workflow Boundaries
 
-For model, DTO, lifecycle, recovery or cleanup changes, read [Workspace Boundary Rules](../docs/model-state-boundary-rules.md) and use its change-review template.
+For model, DTO, lifecycle, recovery or cleanup changes, read [Workspace Boundary Rules](~/dataspace/magicPlatform/docs/technical/model-state-boundary-rules.md) and use its change-review template.
 
 - Keep HTTP/TCP/SSE, routing and middleware owner-neutral. Do not embed tenant provisioning, application deployment or platform workflow fields in protocol infrastructure.
 - Protocol cancellation and HTTP status are not business commit receipts. Keep domain state transitions in the application owner and preserve request context at adapter boundaries.
@@ -242,7 +242,7 @@ slog.Error("server fatal error", "err", err)
 
 ### 2. Functional Options Pattern
 - Use for constructors with multiple configuration parameters
-- Example (see `http/embed_static.go`):
+- Example (see `~/codespace/magicEngine/http/embed_static.go`):
 ```go
 type EmbedStaticOption func(*EmbedStatic)
 
@@ -274,7 +274,7 @@ context.WithValue(ctx, helloKey{}, "value")
 ### 4. Error Constants
 - Define reusable error constants in `errors.go` files
 - Use custom error types for additional context
-- Example (see `http/errors.go`):
+- Example (see `~/codespace/magicEngine/http/errors.go`):
 ```go
 var (
     ErrURLNotFound = errors.New("the requested url was not found on this server")
