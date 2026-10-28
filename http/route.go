@@ -91,16 +91,17 @@ type PatternFilter struct {
 var routeReg1 = regexp.MustCompile(`:[^/#?()\.\\]+`)
 var routeReg2 = regexp.MustCompile(`\*\*`)
 
-// NewPatternFilter new route filter
+// NewPatternFilter matches the decoded URL.Path, which never contains the
+// query or fragment. Literal escaped ?/# are data, including in file names.
 func NewPatternFilter(routeUriPattern string) *PatternFilter {
 	filter := &PatternFilter{}
 	pattern := routeReg1.ReplaceAllStringFunc(routeUriPattern, func(m string) string {
-		return fmt.Sprintf(`(?P<%s>[^/#?]+)`, m[1:])
+		return fmt.Sprintf(`(?P<%s>[^/]+)`, m[1:])
 	})
 	var index int
 	pattern = routeReg2.ReplaceAllStringFunc(pattern, func(m string) string {
 		index++
-		return fmt.Sprintf(`(?P<_%d>[^#?]*)`, index)
+		return fmt.Sprintf(`(?P<_%d>.*)`, index)
 	})
 	pattern += `\/?`
 	filter.regex = regexp.MustCompile(pattern)
