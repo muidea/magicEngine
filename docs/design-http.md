@@ -46,6 +46,8 @@
   - `Fallback`
   - `IndexFile`
 
+`StaticHandler` 对 `fs.ErrNotExist` 及无可服务索引返回404，其他 I/O 错误返回500；`Fallback` 仅在原资源不存在时使用，不掩盖权限或文件系统故障。`PrefixUri` 按完整路径段匹配，`/static` 不接纳 `/static-other`。目录规范化重定向、HEAD 和 Range 保持原 HTTP 语义。中间件模式继续将无法服务的请求交给后续处理器。
+
 ### embed 静态资源
 
 - 主入口在 `http/embed_static.go`

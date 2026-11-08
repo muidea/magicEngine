@@ -34,6 +34,7 @@ v1.5.9（2026-10-28）：HTTP 路径匹配按 net/url 已解码的 URL.Path 处�
 - `RouteRegistry` 支持 API version、动态路径参数 `:id` 和通配 `**`
 - HTTP 响应记账包装器安全透传 flush/hijack，并可由 `http.ResponseController` 解包；协议升级后不会追加默认 204
 - 静态资源支持文件系统和 embed 两种方式
+- 文件系统 `StaticHandler` 对真实文件或索引缺失返回404，其他打开／读取错误保持500；Fallback仅处理资源不存在，PrefixUri按路径段匹配。消费者须同步依赖并配套重建，详见[静态资源合同](~/codespace/magicEngine/docs/design-http.md#文件系统静态资源)。
 - SSE 支持 holder 注册、心跳、事件推送和客户端重试
 - TCP 基于 `~/codespace/magicCommon/execute` 做连接回调调度
 

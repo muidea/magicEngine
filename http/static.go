@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -59,7 +61,7 @@ func resolveRootDirectory(rootPath string, relativeTo string) string {
 func serveStaticFile(dir http.Dir, opt StaticOptions, fileUri string, res http.ResponseWriter, req *http.Request, skipLogging bool) error {
 	openFile, openErr := dir.Open(fileUri)
 	if openErr != nil {
-		if opt.Fallback != "" {
+		if opt.Fallback != "" && errors.Is(openErr, fs.ErrNotExist) {
 			fileUri = opt.Fallback
 			openFile, openErr = dir.Open(opt.Fallback)
 		}
@@ -175,7 +177,7 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 	opt := prepareStaticOptions(staticOpt)
 	uriFilePath := req.URL.Path
 
-	if !strings.HasPrefix(uriFilePath, opt.PrefixUri) {
+	if opt.PrefixUri != "" && uriFilePath != opt.PrefixUri && !strings.HasPrefix(uriFilePath, opt.PrefixUri+"/") {
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -185,6 +187,10 @@ func StaticHandler(ctx context.Context, res http.ResponseWriter, req *http.Reque
 	err := serveStaticFile(dir, opt, uriFilePath, res, req, false)
 	if err != nil {
 		slog.Warn("failed to serve static file", "path", uriFilePath, "err", err)
-		res.WriteHeader(http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, ErrURLNotFound) {
+			status = http.StatusNotFound
+		}
+		res.WriteHeader(status)
 	}
 }
